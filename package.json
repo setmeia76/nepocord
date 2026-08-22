@@ -1,5 +1,5 @@
 {
-  "name": "discord2",
+  "name": "nepocord",
   "version": "1.0.0",
   "description": "App de chat, voz e compartilhamento de tela para grupos de amigos",
   "main": "main.js",
@@ -19,8 +19,8 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.seunome.discord2",
-    "productName": "discord2",
+    "appId": "com.seunome.nepocord",
+    "productName": "nepocord",
     "files": [
       "main.js",
       "build/icone.png",

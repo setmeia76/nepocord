@@ -1,4 +1,12 @@
-# 👀 discord2 — chat, voz e tela pra você e seus amigos
+# 👀 nepocord — chat, voz e tela pra você e seus amigos
+
+> **Sobre o nome:** o app foi renomeado de "discord2" para "nepocord" no
+> `package.json`, no título da janela/aba e aqui no README. Isso NÃO renomeia
+> sozinho o repositório no GitHub (`setmeia76/discord2`) nem o serviço no
+> Render (a URL continua `discord2-tmuf.onrender.com`) — essas duas coisas só
+> podem ser renomeadas por você, direto nas configurações do GitHub e do
+> Render (e, se renomear o Render, o `main.js` também precisa apontar pra
+> nova URL, o que exige gerar um `.exe` novo).
 
 ## O que mudou nesta versão
 
@@ -51,7 +59,7 @@ npm install
 npm run dist
 ```
 
-O instalador sai em `dist/discord2 Setup 1.0.0.exe`. Como ele só abre uma
+O instalador sai em `dist/nepocord Setup 1.0.0.exe`. Como ele só abre uma
 janela apontando para o Render, não precisa reconstruir o `.exe` toda vez que
 mudar `server.js` ou `public/index.html` — só quando mudar algo em `main.js`
 ou no ícone. As correções de tela/chamada valem assim que você fizer o `git

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>👀 sala — chat, voz e tela</title>
+<title>👀 nepocord — chat, voz e tela</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%80%3C/text%3E%3C/svg%3E">
 <style>
   :root {
@@ -285,20 +285,222 @@
   }
   .botao-controle.sair:hover { filter: brightness(1.1); }
 
-  /* Novos Estilos */
-  .item-voz {
-    font-size: 13px; color: var(--text); display: flex; align-items: center;
-    padding: 4px 6px; border-radius: 4px; cursor: context-menu;
+  /* ---------- Área direita da barra do topo / botão de configurações ---------- */
+  .area-direita-topo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
   }
-  .item-voz:hover { background: var(--bg-raised); }
-  .quadro-video .controles-video-overlay {
-    position: absolute; top: 8px; right: 10px; display: flex; gap: 6px; opacity: 0; transition: opacity 0.2s;
+  .botao-config {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    transition: border-color 0.15s, color 0.15s, transform 0.2s;
   }
-  .quadro-video:hover .controles-video-overlay { opacity: 1; }
-  .controles-video-overlay button {
-    background: rgba(0,0,0,0.6); border: none; border-radius: 4px; color: white; padding: 4px 6px; cursor: pointer; font-size: 12px;
+  .botao-config:hover { border-color: var(--pink); color: var(--pink-soft); }
+  .botao-config.aberto { border-color: var(--pink); color: var(--pink-soft); transform: rotate(35deg); }
+
+  /* ---------- Painel de configurações ---------- */
+  #painel-config {
+    position: fixed;
+    top: 56px;
+    right: 16px;
+    width: 300px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+    padding: 16px;
+    z-index: 50;
+    display: none;
   }
-  .controles-video-overlay button:hover { background: rgba(0,0,0,0.8); }
+  #painel-config.aberto { display: block; }
+  #painel-config h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-dim);
+    margin: 16px 0 10px;
+    font-weight: 700;
+  }
+  #painel-config h2:first-child { margin-top: 0; }
+  .linha-config {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 13px;
+  }
+  .linha-config .rotulo-config { color: var(--text); }
+  .linha-config .rotulo-config small { display: block; color: var(--text-dim); font-size: 10.5px; margin-top: 1px; }
+
+  /* Switch estilo toggle */
+  .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch .trilho {
+    position: absolute; inset: 0;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .switch .trilho::before {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    left: 2px; top: 2px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    transition: transform 0.15s, background 0.15s;
+  }
+  .switch input:checked + .trilho { background: var(--pink-dim); border-color: var(--pink); }
+  .switch input:checked + .trilho::before { transform: translateX(16px); background: var(--pink-soft); }
+
+  .campo-config-slider { padding: 7px 0; }
+  .campo-config-slider .linha-config { padding-bottom: 4px; }
+  .campo-config-slider input[type=range] { width: 100%; accent-color: var(--pink); }
+  .valor-slider { font-family: var(--mono); color: var(--pink-soft); font-size: 12px; min-width: 38px; text-align: right; }
+
+  .campo-config select {
+    width: 100%;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 8px;
+    font-size: 12px;
+    margin-top: 4px;
+    outline: none;
+  }
+  .campo-config select:focus { border-color: var(--pink); }
+  .campo-config label.rotulo-config { display: block; }
+  .nota-config { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ---------- Barra de participantes na chamada ---------- */
+  #barra-participantes {
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--line);
+  }
+  #barra-participantes.visivel { display: flex; }
+  .pill-participante {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 12px 5px 6px;
+    font-size: 12px;
+    color: var(--text);
+    user-select: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .pill-participante.remoto { cursor: context-menu; }
+  .pill-participante.falando { border-color: var(--pink); box-shadow: 0 0 0 2px var(--pink-dim); }
+  .pill-participante .avatar-mini {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--pink-dim);
+    color: var(--pink-soft);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .pill-participante .tag-voce { color: var(--text-dim); font-size: 10px; }
+  .pill-participante .icone-volume-custom { color: var(--pink-soft); font-size: 10px; font-family: var(--mono); }
+
+  /* ---------- Menu de contexto de participante ---------- */
+  #menu-contexto-usuario {
+    position: fixed;
+    display: none;
+    width: 220px;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+    padding: 12px 14px;
+    z-index: 100;
+  }
+  #menu-contexto-usuario.aberto { display: block; }
+  #menu-contexto-usuario .titulo-menu {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  #menu-contexto-usuario .titulo-menu strong { color: var(--pink-soft); }
+  #menu-contexto-usuario input[type=range] { width: 100%; accent-color: var(--pink); }
+  #menu-contexto-usuario .linha-menu-valor {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; margin-bottom: 6px;
+  }
+  #menu-contexto-usuario button.redefinir {
+    margin-top: 10px;
+    width: 100%;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    border-radius: 6px;
+    padding: 6px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  #menu-contexto-usuario button.redefinir:hover { border-color: var(--pink); color: var(--pink-soft); }
+
+  /* ---------- Controles no canto dos quadros de vídeo/tela ---------- */
+  .quadro-video .controles-quadro {
+    position: absolute;
+    top: 6px; right: 6px;
+    display: flex;
+    gap: 5px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .quadro-video:hover .controles-quadro { opacity: 1; }
+  .quadro-video .botao-quadro {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: rgba(6,8,24,0.75);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .quadro-video .botao-quadro:hover { border-color: var(--pink); color: var(--pink-soft); }
+  .quadro-video.tela-oculta-local video { visibility: hidden; }
+  .quadro-video .aviso-oculta {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-dim);
+    background: #05060f;
+    text-align: center;
+    padding: 10px;
+    cursor: pointer;
+  }
+  .quadro-video.tela-oculta-local .aviso-oculta { display: flex; }
 </style>
 </head>
 <body>
@@ -330,19 +532,64 @@
       <span class="ponto-vivo"></span>
       <span id="rotulo-sala"></span>
     </div>
-    <div style="display: flex; align-items: center; gap: 12px;">
+    <div class="area-direita-topo">
       <div id="contagem">1 pessoa na sala</div>
-      <button id="btn-config" title="Configurações" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:16px;">⚙️</button>
+      <button class="botao-config" id="btn-config" title="configurações" aria-label="configurações">⚙️</button>
     </div>
   </div>
+
+  <!-- Painel de configurações: ruído, volume das vozes e dispositivos de áudio -->
+  <div id="painel-config">
+    <h2>Áudio da chamada</h2>
+    <div class="linha-config">
+      <span class="rotulo-config">Redução de ruído<small>filtra ruído de fundo do seu microfone</small></span>
+      <label class="switch">
+        <input type="checkbox" id="chk-ruido" checked>
+        <span class="trilho"></span>
+      </label>
+    </div>
+    <div class="linha-config">
+      <span class="rotulo-config">Cancelamento de eco<small>evita eco/retorno do áudio</small></span>
+      <label class="switch">
+        <input type="checkbox" id="chk-eco" checked>
+        <span class="trilho"></span>
+      </label>
+    </div>
+    <div class="linha-config">
+      <span class="rotulo-config">Ganho automático<small>ajusta seu volume de entrada sozinho</small></span>
+      <label class="switch">
+        <input type="checkbox" id="chk-agc" checked>
+        <span class="trilho"></span>
+      </label>
+    </div>
+
+    <h2>Volume</h2>
+    <div class="campo-config-slider">
+      <div class="linha-config">
+        <span class="rotulo-config">Volume das vozes<small>aumenta o volume de todo mundo na chamada</small></span>
+        <span class="valor-slider" id="valor-volume-geral">100%</span>
+      </div>
+      <input type="range" id="slider-volume-geral" min="0" max="300" value="100">
+    </div>
+
+    <h2>Dispositivos</h2>
+    <div class="campo-config">
+      <label class="rotulo-config" for="select-microfone">Microfone</label>
+      <select id="select-microfone"></select>
+    </div>
+    <div class="campo-config" style="margin-top:10px;">
+      <label class="rotulo-config" for="select-saida">Saída de áudio</label>
+      <select id="select-saida"></select>
+      <div class="nota-config" id="nota-saida"></div>
+    </div>
+  </div>
+
+  <!-- Quem está na chamada de voz agora — clique com o botão direito num nome pra ajustar a voz dele -->
+  <div id="barra-participantes"></div>
 
   <div id="corpo">
     <div id="painel-video"></div>
     <div id="painel-chat">
-      <div id="painel-usuarios-voz" style="display: none; padding: 14px; border-bottom: 1px solid var(--line);">
-        <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Na chamada</div>
-        <div id="lista-voz" style="display: flex; flex-direction: column; gap: 6px;"></div>
-      </div>
       <div id="mensagens"></div>
       <form id="form-chat">
         <input id="input-chat" type="text" placeholder="mensagem..." autocomplete="off">
@@ -360,33 +607,15 @@
   </div>
 </div>
 
-<div id="menu-contexto" style="display: none; position: absolute; background: var(--bg-panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); width: 200px;">
-  <div id="menu-nome" style="font-weight: bold; margin-bottom: 10px; font-size: 13px; color: var(--pink);"></div>
-  <div style="font-size: 12px; margin-bottom: 4px; color: var(--text-dim);">Volume</div>
-  <input type="range" id="range-vol-user" min="0" max="3" step="0.1" value="1" style="width: 100%;">
-</div>
-
-<div id="modal-config" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center;">
-  <div style="background: var(--bg-panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; width: 340px;">
-    <h3 style="margin: 0 0 16px; font-size: 16px;">Configurações</h3>
-    <div style="margin-bottom: 16px;">
-      <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
-        <input type="checkbox" id="check-ruido" checked>
-        Supressão de Ruído
-      </label>
-    </div>
-    <div style="margin-bottom: 16px;">
-      <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Volume Geral</div>
-      <input type="range" id="range-vol-geral" min="0" max="2" step="0.1" value="1" style="width: 100%;">
-    </div>
-    <div style="margin-bottom: 24px;">
-      <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Volume do seu Microfone</div>
-      <input type="range" id="range-vol-mic" min="0" max="2" step="0.1" value="1" style="width: 100%;">
-    </div>
-    <div style="text-align: right;">
-      <button id="btn-fechar-config" style="background: var(--pink); color: #21001b; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold; cursor: pointer;">Fechar</button>
-    </div>
+<!-- Menu de contexto: clique direito num participante da chamada -->
+<div id="menu-contexto-usuario">
+  <div class="titulo-menu">Aumentar voz de <strong id="menu-contexto-nome"></strong></div>
+  <div class="linha-menu-valor">
+    <span>Volume</span>
+    <span class="valor-slider" id="menu-contexto-valor">100%</span>
   </div>
+  <input type="range" id="menu-contexto-slider" min="0" max="300" value="100">
+  <button class="redefinir" id="menu-contexto-redefinir">redefinir para 100%</button>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -401,47 +630,21 @@
   let streamMic = null;       // MediaStream do microfone (só existe durante a chamada)
   let streamTela = null;      // MediaStream da tela compartilhada (se ativo)
   let reducaoRuidoAtiva = true;
+  let cancelamentoEcoAtivo = true;
+  let agcAtivo = true;
+  let volumeGeralAtual = 1;          // 0 a 3 → 0% a 300% (volume geral das vozes recebidas)
+  const volumesIndividuais = {};     // socketId -> ganho individual (0 a 3), some com o volume geral
   const conexoes = {};        // socketId -> { pc, polite, makingOffer, ignoreOffer }
   const streamsRemotos = {};  // socketId -> MediaStream combinada recebida
   const nomesRemotos = {};    // socketId -> nome (conhecido desde a entrada no chat)
+  const participantesNaVoz = {}; // socketId (ou 'local') -> { nome, local }
 
-  let audioCtx;
-  let masterGain;
-  const remoteAudioNodes = {}; // id -> { audio, source, gain, muted, userVolume }
-  let localMicGain;
-  let localMicDest;
-  let originalStreamMic;
+  let audioCtx = null;
+  let masterGain = null;
+  const nosAudioRemoto = {};  // socketId -> { fonte, ganho, analisador, dataArray }
 
-  function getAudioContext() {
-      if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          masterGain = audioCtx.createGain();
-          masterGain.gain.value = parseFloat(document.getElementById('range-vol-geral').value);
-          masterGain.connect(audioCtx.destination);
-      }
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      return { ctx: audioCtx, masterGain };
-  }
-
-  function handleRemoteAudioTrack(idRemoto, stream) {
-      if (remoteAudioNodes[idRemoto]) return;
-      if (stream.getAudioTracks().length === 0) return;
-      
-      const { ctx, masterGain } = getAudioContext();
-      const audio = new Audio();
-      audio.srcObject = stream;
-      audio.autoplay = true;
-      audio.muted = true; // prevent echo, Web Audio handles it
-      
-      const source = ctx.createMediaStreamSource(stream);
-      const gain = ctx.createGain();
-      gain.gain.value = 1.0;
-      
-      source.connect(gain);
-      gain.connect(masterGain);
-      
-      remoteAudioNodes[idRemoto] = { audio, source, gain, muted: false, userVolume: 1.0 };
-  }
+  let dispositivoMicPreferido = null;
+  let dispositivoSaidaPreferido = null;
 
   const configIce = {
     iceServers: [
@@ -469,6 +672,25 @@
   const btnRuido = document.getElementById('btn-ruido');
   const btnSair = document.getElementById('btn-sair');
 
+  const btnConfig = document.getElementById('btn-config');
+  const painelConfig = document.getElementById('painel-config');
+  const chkRuido = document.getElementById('chk-ruido');
+  const chkEco = document.getElementById('chk-eco');
+  const chkAgc = document.getElementById('chk-agc');
+  const sliderVolumeGeral = document.getElementById('slider-volume-geral');
+  const valorVolumeGeral = document.getElementById('valor-volume-geral');
+  const selectMicrofone = document.getElementById('select-microfone');
+  const selectSaida = document.getElementById('select-saida');
+  const notaSaida = document.getElementById('nota-saida');
+
+  const barraParticipantes = document.getElementById('barra-participantes');
+
+  const menuContexto = document.getElementById('menu-contexto-usuario');
+  const menuContextoNome = document.getElementById('menu-contexto-nome');
+  const menuContextoValor = document.getElementById('menu-contexto-valor');
+  const menuContextoSlider = document.getElementById('menu-contexto-slider');
+  const menuContextoRedefinir = document.getElementById('menu-contexto-redefinir');
+
   // ---------- Entrada na sala (só chat, sem pedir mic/câmera) ----------
   btnEntrar.addEventListener('click', entrarNaSala);
   inputSala.addEventListener('keydown', e => { if (e.key === 'Enter') entrarNaSala(); });
@@ -491,6 +713,294 @@
     socket.emit('entrar-sala', { sala, nome });
   }
 
+  // ---------- Áudio: contexto compartilhado + volume geral ----------
+  function garantirAudioContext() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = volumeGeralAtual;
+      masterGain.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  // Toda voz recebida passa por aqui — inclusive de quem não está
+  // compartilhando tela. No app original só existia reprodução de áudio
+  // quando havia um quadro de vídeo, então quem só falava (sem tela) não
+  // era ouvido por ninguém. Centralizar isso também é o que permite o
+  // volume geral e o volume individual por pessoa.
+  function configurarAudioRemoto(id, trilhaAudio) {
+    garantirAudioContext();
+    pararAudioRemoto(id);
+    const streamAudio = new MediaStream([trilhaAudio]);
+    const fonte = audioCtx.createMediaStreamSource(streamAudio);
+    const ganho = audioCtx.createGain();
+    ganho.gain.value = volumesIndividuais[id] ?? 1;
+    const analisador = audioCtx.createAnalyser();
+    analisador.fftSize = 512;
+    fonte.connect(ganho);
+    ganho.connect(masterGain);
+    ganho.connect(analisador);
+    nosAudioRemoto[id] = { fonte, ganho, analisador, dataArray: new Uint8Array(analisador.frequencyBinCount) };
+  }
+
+  function pararAudioRemoto(id) {
+    const n = nosAudioRemoto[id];
+    if (!n) return;
+    try { n.fonte.disconnect(); n.ganho.disconnect(); n.analisador.disconnect(); } catch (e) {}
+    delete nosAudioRemoto[id];
+  }
+
+  function definirVolumeIndividual(id, valor) {
+    volumesIndividuais[id] = valor;
+    if (nosAudioRemoto[id]) nosAudioRemoto[id].ganho.gain.value = valor;
+  }
+
+  // Anel rosa na pessoa que está falando, usando o mesmo grafo de áudio
+  function loopDeteccaoDeFala() {
+    Object.entries(nosAudioRemoto).forEach(([id, n]) => {
+      n.analisador.getByteTimeDomainData(n.dataArray);
+      let soma = 0;
+      for (let i = 0; i < n.dataArray.length; i++) {
+        const v = (n.dataArray[i] - 128) / 128;
+        soma += v * v;
+      }
+      const rms = Math.sqrt(soma / n.dataArray.length);
+      const pill = document.getElementById('pill-' + id);
+      if (pill) pill.classList.toggle('falando', rms > 0.06);
+    });
+    requestAnimationFrame(loopDeteccaoDeFala);
+  }
+  requestAnimationFrame(loopDeteccaoDeFala);
+
+  // ---------- Painel de configurações (⚙️ no canto superior direito) ----------
+  btnConfig.addEventListener('click', () => {
+    const abrindo = !painelConfig.classList.contains('aberto');
+    painelConfig.classList.toggle('aberto', abrindo);
+    btnConfig.classList.toggle('aberto', abrindo);
+    if (abrindo) popularDispositivos();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!painelConfig.classList.contains('aberto')) return;
+    if (painelConfig.contains(e.target) || e.target === btnConfig) return;
+    painelConfig.classList.remove('aberto');
+    btnConfig.classList.remove('aberto');
+  });
+
+  chkRuido.addEventListener('change', async () => {
+    reducaoRuidoAtiva = chkRuido.checked;
+    btnRuido.classList.toggle('ativo', reducaoRuidoAtiva);
+    btnRuido.textContent = reducaoRuidoAtiva ? '🔉' : '🔊';
+    if (streamMic) {
+      try { await streamMic.getAudioTracks()[0].applyConstraints({ noiseSuppression: reducaoRuidoAtiva }); }
+      catch (e) { console.warn('não foi possível alternar a redução de ruído', e); }
+    }
+  });
+
+  chkEco.addEventListener('change', async () => {
+    cancelamentoEcoAtivo = chkEco.checked;
+    if (streamMic) {
+      try { await streamMic.getAudioTracks()[0].applyConstraints({ echoCancellation: cancelamentoEcoAtivo }); }
+      catch (e) { console.warn('não foi possível alternar o cancelamento de eco', e); }
+    }
+  });
+
+  chkAgc.addEventListener('change', async () => {
+    agcAtivo = chkAgc.checked;
+    if (streamMic) {
+      try { await streamMic.getAudioTracks()[0].applyConstraints({ autoGainControl: agcAtivo }); }
+      catch (e) { console.warn('não foi possível alternar o ganho automático', e); }
+    }
+  });
+
+  sliderVolumeGeral.addEventListener('input', () => {
+    volumeGeralAtual = Number(sliderVolumeGeral.value) / 100;
+    valorVolumeGeral.textContent = sliderVolumeGeral.value + '%';
+    if (masterGain) masterGain.gain.value = volumeGeralAtual;
+  });
+
+  selectMicrofone.addEventListener('change', () => trocarMicrofone(selectMicrofone.value));
+  selectSaida.addEventListener('change', () => trocarSaidaDeAudio(selectSaida.value));
+
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', () => {
+      if (painelConfig.classList.contains('aberto')) popularDispositivos();
+    });
+  }
+
+  async function popularDispositivos() {
+    try {
+      const dispositivos = await navigator.mediaDevices.enumerateDevices();
+      const entradas = dispositivos.filter(d => d.kind === 'audioinput');
+      const saidas = dispositivos.filter(d => d.kind === 'audiooutput');
+
+      selectMicrofone.innerHTML = '';
+      if (entradas.length === 0) {
+        selectMicrofone.innerHTML = '<option value="">nenhum microfone encontrado</option>';
+      } else {
+        entradas.forEach((d, i) => {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          opt.textContent = d.label || ('microfone ' + (i + 1));
+          selectMicrofone.appendChild(opt);
+        });
+        if (dispositivoMicPreferido) selectMicrofone.value = dispositivoMicPreferido;
+      }
+
+      const suportaSaida = typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype;
+      selectSaida.disabled = !suportaSaida;
+      if (!suportaSaida) {
+        selectSaida.innerHTML = '<option value="">indisponível neste app</option>';
+        notaSaida.textContent = 'este navegador/Electron não permite trocar a saída de áudio.';
+      } else if (saidas.length === 0) {
+        selectSaida.innerHTML = '<option value="">nenhum dispositivo encontrado</option>';
+        notaSaida.textContent = '';
+      } else {
+        selectSaida.innerHTML = '';
+        saidas.forEach((d, i) => {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          opt.textContent = d.label || ('saída ' + (i + 1));
+          selectSaida.appendChild(opt);
+        });
+        if (dispositivoSaidaPreferido) selectSaida.value = dispositivoSaidaPreferido;
+        notaSaida.textContent = '';
+      }
+    } catch (e) {
+      console.warn('não foi possível listar os dispositivos de áudio', e);
+    }
+  }
+
+  async function trocarMicrofone(deviceId) {
+    dispositivoMicPreferido = deviceId || null;
+    if (!emChamada || !deviceId) return;
+    try {
+      const novoStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: { exact: deviceId },
+          echoCancellation: cancelamentoEcoAtivo,
+          noiseSuppression: reducaoRuidoAtiva,
+          autoGainControl: agcAtivo
+        },
+        video: false
+      });
+      const novaTrilha = novoStream.getAudioTracks()[0];
+      novaTrilha.enabled = micAtivo;
+
+      Object.values(conexoes).forEach(estado => {
+        const remetente = estado.pc.getSenders().find(s => s.track && s.track.kind === 'audio');
+        if (remetente) remetente.replaceTrack(novaTrilha);
+      });
+
+      if (streamMic) streamMic.getTracks().forEach(t => t.stop());
+      streamMic = novoStream;
+      atualizarUiChamada();
+    } catch (e) {
+      console.warn('não foi possível trocar de microfone', e);
+    }
+  }
+
+  async function trocarSaidaDeAudio(deviceId) {
+    dispositivoSaidaPreferido = deviceId || null;
+    if (!deviceId || !audioCtx || typeof audioCtx.setSinkId !== 'function') return;
+    try { await audioCtx.setSinkId(deviceId); }
+    catch (e) { console.warn('não foi possível trocar a saída de áudio', e); }
+  }
+
+  // ---------- Participantes na chamada (barra + menu de contexto) ----------
+  function adicionarParticipanteNaVoz(id, nome, local) {
+    participantesNaVoz[id] = { nome, local: !!local };
+    renderizarParticipantes();
+  }
+
+  function removerParticipanteDaVoz(id) {
+    delete participantesNaVoz[id];
+    delete volumesIndividuais[id];
+    renderizarParticipantes();
+  }
+
+  function renderizarParticipantes() {
+    const ids = Object.keys(participantesNaVoz);
+    barraParticipantes.classList.toggle('visivel', ids.length > 0);
+    barraParticipantes.innerHTML = '';
+    ids.forEach(id => {
+      const p = participantesNaVoz[id];
+      const pill = document.createElement('div');
+      pill.className = 'pill-participante' + (p.local ? '' : ' remoto');
+      pill.id = 'pill-' + id;
+      const inicial = (p.nome || '?').trim().charAt(0).toUpperCase();
+      const volumePct = Math.round((volumesIndividuais[id] ?? 1) * 100);
+      pill.innerHTML =
+        '<span class="avatar-mini">' + escapeHtml(inicial) + '</span>' +
+        '<span>' + escapeHtml(p.nome) + '</span>' +
+        (p.local
+          ? '<span class="tag-voce">você</span>'
+          : (volumePct !== 100 ? '<span class="icone-volume-custom">' + volumePct + '%</span>' : ''));
+      if (!p.local) {
+        pill.title = 'clique com o botão direito para ajustar o volume';
+        pill.addEventListener('contextmenu', (e) => abrirMenuContexto(e, id, p.nome));
+      }
+      barraParticipantes.appendChild(pill);
+    });
+  }
+
+  let idContextoAtual = null;
+
+  function abrirMenuContexto(evento, id, nome) {
+    evento.preventDefault();
+    idContextoAtual = id;
+    menuContextoNome.textContent = nome;
+    const valorAtual = Math.round((volumesIndividuais[id] ?? 1) * 100);
+    menuContextoSlider.value = valorAtual;
+    menuContextoValor.textContent = valorAtual + '%';
+
+    menuContexto.classList.add('aberto');
+    const margem = 10;
+    let x = evento.clientX;
+    let y = evento.clientY;
+    const retangulo = menuContexto.getBoundingClientRect();
+    if (x + retangulo.width > window.innerWidth - margem) x = window.innerWidth - retangulo.width - margem;
+    if (y + retangulo.height > window.innerHeight - margem) y = window.innerHeight - retangulo.height - margem;
+    menuContexto.style.left = x + 'px';
+    menuContexto.style.top = y + 'px';
+  }
+
+  function fecharMenuContexto() {
+    menuContexto.classList.remove('aberto');
+    idContextoAtual = null;
+  }
+
+  menuContextoSlider.addEventListener('input', () => {
+    if (!idContextoAtual) return;
+    const valor = Number(menuContextoSlider.value);
+    menuContextoValor.textContent = valor + '%';
+    definirVolumeIndividual(idContextoAtual, valor / 100);
+    renderizarParticipantes();
+  });
+
+  menuContextoRedefinir.addEventListener('click', () => {
+    if (!idContextoAtual) return;
+    menuContextoSlider.value = 100;
+    menuContextoValor.textContent = '100%';
+    definirVolumeIndividual(idContextoAtual, 1);
+    renderizarParticipantes();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (menuContexto.classList.contains('aberto') && !menuContexto.contains(e.target)) fecharMenuContexto();
+  });
+  document.addEventListener('contextmenu', (e) => {
+    if (menuContexto.classList.contains('aberto') && !e.target.closest('.pill-participante.remoto')) fecharMenuContexto();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    fecharMenuContexto();
+    painelConfig.classList.remove('aberto');
+    btnConfig.classList.remove('aberto');
+  });
+
   // ---------- Quadros de vídeo (tela compartilhada) ----------
   function criarOuAtualizarQuadro(id, nome, stream) {
     let quadro = document.getElementById('quadro-' + id);
@@ -498,45 +1008,75 @@
       quadro = document.createElement('div');
       quadro.className = 'quadro-video';
       quadro.id = 'quadro-' + id;
+
       const video = document.createElement('video');
       video.autoplay = true;
       video.playsInline = true;
-      video.muted = true; // Web Audio handles audio, or it's local
+      // O áudio de todo mundo é tocado pelo grafo de Web Audio
+      // (configurarAudioRemoto), então o <video> fica sempre mudo — senão
+      // o som tocaria duas vezes.
+      video.muted = true;
       quadro.appendChild(video);
+
       const rot = document.createElement('div');
       rot.className = 'rotulo';
       quadro.appendChild(rot);
 
       const controles = document.createElement('div');
-      controles.className = 'controles-video-overlay';
-      const btnMutar = document.createElement('button');
-      btnMutar.innerHTML = '🔊';
-      btnMutar.title = "Mutar Tela";
-      let userMuted = false;
-      btnMutar.onclick = () => {
-          userMuted = !userMuted;
-          btnMutar.innerHTML = userMuted ? '🔇' : '🔊';
-          if (remoteAudioNodes[id]) {
-              remoteAudioNodes[id].muted = userMuted;
-              remoteAudioNodes[id].gain.gain.value = userMuted ? 0 : remoteAudioNodes[id].userVolume;
-          }
-          if (userMuted) video.pause(); else video.play();
-      };
-      const btnFull = document.createElement('button');
-      btnFull.innerHTML = '🔲';
-      btnFull.title = "Tela Cheia";
-      btnFull.onclick = () => {
-          if (video.requestFullscreen) video.requestFullscreen();
-      };
-      controles.appendChild(btnMutar);
-      controles.appendChild(btnFull);
-      if (id !== 'local') quadro.appendChild(controles);
+      controles.className = 'controles-quadro';
+
+      const btnTelaCheia = document.createElement('button');
+      btnTelaCheia.className = 'botao-quadro';
+      btnTelaCheia.title = 'tela cheia';
+      btnTelaCheia.textContent = '⛶';
+      btnTelaCheia.addEventListener('click', () => {
+        if (video.requestFullscreen) video.requestFullscreen();
+        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+      });
+
+      const btnOcultar = document.createElement('button');
+      btnOcultar.className = 'botao-quadro botao-ocultar';
+      btnOcultar.title = 'mutar tela (ocultar localmente)';
+      btnOcultar.textContent = '🙈';
+      btnOcultar.addEventListener('click', () => alternarTelaOculta(id));
+
+      controles.appendChild(btnTelaCheia);
+      controles.appendChild(btnOcultar);
+      quadro.appendChild(controles);
+
+      const aviso = document.createElement('div');
+      aviso.className = 'aviso-oculta';
+      aviso.innerHTML = '🙈<br>tela mutada<br><small>clique para mostrar de novo</small>';
+      aviso.addEventListener('click', () => alternarTelaOculta(id));
+      quadro.appendChild(aviso);
 
       painelVideo.appendChild(quadro);
     }
+
+    quadro._streamOriginal = stream;
     const video = quadro.querySelector('video');
-    if (video.srcObject !== stream) video.srcObject = stream;
-    quadro.querySelector('.rotulo').textContent = nome + (id === 'local' ? ' (Você)' : '') + ' · tela';
+    if (!quadro.classList.contains('tela-oculta-local') && video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
+    quadro.querySelector('.rotulo').textContent = nome + ' · tela';
+  }
+
+  // Oculta/mostra a tela compartilhada de alguém só do seu lado — não afeta
+  // o que os outros participantes veem, é só um "mutar" local da imagem.
+  function alternarTelaOculta(id) {
+    const quadro = document.getElementById('quadro-' + id);
+    if (!quadro) return;
+    const video = quadro.querySelector('video');
+    const ocultando = !quadro.classList.contains('tela-oculta-local');
+    quadro.classList.toggle('tela-oculta-local', ocultando);
+    const botao = quadro.querySelector('.botao-ocultar');
+    if (ocultando) {
+      video.srcObject = null;
+      if (botao) { botao.textContent = '🙉'; botao.title = 'desmutar tela'; }
+    } else {
+      video.srcObject = quadro._streamOriginal || null;
+      if (botao) { botao.textContent = '🙈'; botao.title = 'mutar tela (ocultar localmente)'; }
+    }
   }
 
   function removerQuadro(id) {
@@ -566,13 +1106,16 @@
       let ms = streamsRemotos[idRemoto];
       if (!ms) { ms = new MediaStream(); streamsRemotos[idRemoto] = ms; }
       ms.addTrack(evento.track);
-      
-      if (evento.track.kind === 'audio') {
-          handleRemoteAudioTrack(idRemoto, ms);
-      }
-      
+
+      // Toda trilha de áudio recebida vai pro grafo de Web Audio, com ou
+      // sem tela compartilhada junto — corrige o caso em que quem só
+      // falava (sem compartilhar tela) não tinha nenhum elemento tocando
+      // o áudio dele, e de quebra habilita o volume individual.
+      if (evento.track.kind === 'audio') configurarAudioRemoto(idRemoto, evento.track);
+
       evento.track.onended = () => {
         ms.removeTrack(evento.track);
+        if (evento.track.kind === 'audio') pararAudioRemoto(idRemoto);
         if (ms.getVideoTracks().length === 0) removerQuadro(idRemoto);
       };
       if (ms.getVideoTracks().length > 0) criarOuAtualizarQuadro(idRemoto, nomeRemoto, ms);
@@ -601,6 +1144,8 @@
   function fecharConexao(id) {
     if (conexoes[id]) { conexoes[id].pc.close(); delete conexoes[id]; }
     delete streamsRemotos[id];
+    pararAudioRemoto(id);
+    removerParticipanteDaVoz(id);
     removerQuadro(id);
   }
 
@@ -625,19 +1170,20 @@
 
   // ---- Canal de voz/tela (só entra quem clicou em 📞) ----
   socket.on('usuarios-na-voz', (usuarios) => {
-    usuarios.forEach(u => criarConexao(u.id, u.nome, true));
-    atualizarListaVoz();
+    usuarios.forEach(u => {
+      criarConexao(u.id, u.nome, true);
+      adicionarParticipanteNaVoz(u.id, u.nome, false);
+    });
   });
 
   socket.on('novo-usuario-voz', ({ id, nome }) => {
     if (!emChamada) return;
     criarConexao(id, nome, false);
-    atualizarListaVoz();
+    adicionarParticipanteNaVoz(id, nome, false);
   });
 
   socket.on('usuario-saiu-voz', ({ id }) => {
-    fecharConexao(id);
-    atualizarListaVoz();
+    fecharConexao(id); // já remove do áudio, da barra de participantes e do quadro
   });
 
   socket.on('sinal', async ({ de, sinal }) => {
@@ -706,99 +1252,6 @@
     return d.innerHTML;
   }
 
-  // ---------- Lista de Voz & Menus ----------
-  const listaVozUI = document.getElementById('lista-voz');
-  const painelUsuariosVoz = document.getElementById('painel-usuarios-voz');
-
-  function atualizarListaVoz() {
-      listaVozUI.innerHTML = '';
-      if (emChamada) {
-          listaVozUI.appendChild(criarItemVoz('local', meuNome + ' (Você)'));
-      }
-      Object.keys(conexoes).forEach(id => {
-          listaVozUI.appendChild(criarItemVoz(id, nomesRemotos[id] || 'convidado'));
-      });
-  }
-
-  function criarItemVoz(id, nome) {
-      const div = document.createElement('div');
-      div.className = 'item-voz';
-      div.innerHTML = `<span class="ponto-vivo" style="display:inline-block; margin-right:6px;"></span>${escapeHtml(nome)}`;
-      if (id !== 'local') {
-          div.addEventListener('contextmenu', (e) => {
-              e.preventDefault();
-              abrirMenuContexto(e.pageX, e.pageY, id, nome);
-          });
-      }
-      return div;
-  }
-
-  let usuarioContextoAtual = null;
-  const menuContexto = document.getElementById('menu-contexto');
-  const menuNome = document.getElementById('menu-nome');
-  const rangeVolUser = document.getElementById('range-vol-user');
-
-  function abrirMenuContexto(x, y, id, nome) {
-      usuarioContextoAtual = id;
-      menuNome.textContent = nome;
-      if (remoteAudioNodes[id]) {
-          rangeVolUser.value = remoteAudioNodes[id].userVolume || 1;
-      } else {
-          rangeVolUser.value = 1;
-      }
-      menuContexto.style.display = 'block';
-      menuContexto.style.left = x + 'px';
-      menuContexto.style.top = y + 'px';
-  }
-
-  document.addEventListener('click', (e) => {
-      if (!menuContexto.contains(e.target)) {
-          menuContexto.style.display = 'none';
-      }
-  });
-
-  rangeVolUser.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      const id = usuarioContextoAtual;
-      if (id && remoteAudioNodes[id]) {
-          remoteAudioNodes[id].userVolume = val;
-          const isMuted = remoteAudioNodes[id].muted;
-          remoteAudioNodes[id].gain.gain.value = isMuted ? 0 : val;
-      }
-  });
-  
-  // ---------- Configurações Modal ----------
-  const btnConfig = document.getElementById('btn-config');
-  const modalConfig = document.getElementById('modal-config');
-  const btnFecharConfig = document.getElementById('btn-fechar-config');
-  const checkRuido = document.getElementById('check-ruido');
-  const rangeVolGeral = document.getElementById('range-vol-geral');
-  const rangeVolMic = document.getElementById('range-vol-mic');
-
-  btnConfig.addEventListener('click', () => { modalConfig.style.display = 'flex'; });
-  btnFecharConfig.addEventListener('click', () => { modalConfig.style.display = 'none'; });
-
-  checkRuido.addEventListener('change', async (e) => {
-      reducaoRuidoAtiva = e.target.checked;
-      btnRuido.classList.toggle('ativo', reducaoRuidoAtiva);
-      btnRuido.textContent = reducaoRuidoAtiva ? '🔉' : '🔊';
-      if (originalStreamMic) {
-          const trilha = originalStreamMic.getAudioTracks()[0];
-          try { await trilha.applyConstraints({ noiseSuppression: reducaoRuidoAtiva }); } 
-          catch (err) { console.warn(err); }
-      }
-  });
-
-  rangeVolGeral.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      if (masterGain) masterGain.gain.value = val;
-  });
-
-  rangeVolMic.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      if (localMicGain) localMicGain.gain.value = val;
-  });
-
   // ---------- Entrar / sair da chamada (opt-in — nada disso acontece sozinho) ----------
   btnChamada.addEventListener('click', () => {
     if (emChamada) sairDaChamada(); else entrarNaChamada();
@@ -806,36 +1259,27 @@
 
   async function entrarNaChamada() {
     if (emChamada) return;
+    garantirAudioContext(); // criado/retomado aqui, que é um gesto direto do usuário (clique)
+
+    const constraintsAudio = {
+      echoCancellation: cancelamentoEcoAtivo,
+      noiseSuppression: reducaoRuidoAtiva,
+      autoGainControl: agcAtivo
+    };
+    if (dispositivoMicPreferido) constraintsAudio.deviceId = { exact: dispositivoMicPreferido };
+
     try {
-      originalStreamMic = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: reducaoRuidoAtiva,
-          autoGainControl: true
-        },
-        video: false
-      });
-      
-      const ctxData = getAudioContext();
-      const source = ctxData.ctx.createMediaStreamSource(originalStreamMic);
-      localMicGain = ctxData.ctx.createGain();
-      localMicGain.gain.value = parseFloat(rangeVolMic.value);
-      localMicDest = ctxData.ctx.createMediaStreamDestination();
-      
-      source.connect(localMicGain);
-      localMicGain.connect(localMicDest);
-      
-      streamMic = localMicDest.stream; 
-      
+      streamMic = await navigator.mediaDevices.getUserMedia({ audio: constraintsAudio, video: false });
     } catch (e) {
+      // Sem microfone (permissão negada ou indisponível) — segue mesmo assim,
+      // só ouvindo e podendo compartilhar tela.
       streamMic = null;
-      originalStreamMic = null;
     }
 
     emChamada = true;
+    adicionarParticipanteNaVoz('local', meuNome, true);
     socket.emit('entrar-voz', { sala: minhaSala });
     atualizarUiChamada();
-    atualizarListaVoz();
   }
 
   function sairDaChamada() {
@@ -844,19 +1288,15 @@
 
     Object.keys(conexoes).forEach(fecharConexao);
 
-    if (originalStreamMic) {
-      originalStreamMic.getTracks().forEach(t => t.stop());
-      originalStreamMic = null;
-    }
     if (streamMic) {
       streamMic.getTracks().forEach(t => t.stop());
       streamMic = null;
     }
 
     emChamada = false;
+    removerParticipanteDaVoz('local');
     socket.emit('sair-voz', { sala: minhaSala });
     atualizarUiChamada();
-    atualizarListaVoz();
   }
 
   function atualizarUiChamada() {
@@ -865,8 +1305,6 @@
     btnChamada.title = emChamada ? 'sair da chamada' : 'entrar na chamada';
 
     [btnMic, btnTela, btnRuido].forEach(b => b.classList.toggle('indisponivel', !emChamada));
-    
-    painelUsuariosVoz.style.display = emChamada ? 'block' : 'none';
 
     if (emChamada) {
       btnMic.classList.toggle('indisponivel', !streamMic);
@@ -882,9 +1320,6 @@
     if (!emChamada || !streamMic) return;
     micAtivo = !micAtivo;
     streamMic.getAudioTracks().forEach(t => t.enabled = micAtivo);
-    if (originalStreamMic) {
-        originalStreamMic.getAudioTracks().forEach(t => t.enabled = micAtivo);
-    }
     btnMic.classList.toggle('ativo', micAtivo);
     btnMic.textContent = micAtivo ? '🎤' : '🔇';
   });
@@ -902,6 +1337,7 @@
     btnRuido.classList.toggle('ativo', reducaoRuidoAtiva);
     btnRuido.textContent = reducaoRuidoAtiva ? '🔉' : '🔊';
     btnRuido.title = reducaoRuidoAtiva ? 'redução de ruído: ativada' : 'redução de ruído: desativada';
+    chkRuido.checked = reducaoRuidoAtiva;
   });
 
   // ---------- Compartilhar tela ----------
