@@ -284,6 +284,21 @@
     color: #fff;
   }
   .botao-controle.sair:hover { filter: brightness(1.1); }
+
+  /* Novos Estilos */
+  .item-voz {
+    font-size: 13px; color: var(--text); display: flex; align-items: center;
+    padding: 4px 6px; border-radius: 4px; cursor: context-menu;
+  }
+  .item-voz:hover { background: var(--bg-raised); }
+  .quadro-video .controles-video-overlay {
+    position: absolute; top: 8px; right: 10px; display: flex; gap: 6px; opacity: 0; transition: opacity 0.2s;
+  }
+  .quadro-video:hover .controles-video-overlay { opacity: 1; }
+  .controles-video-overlay button {
+    background: rgba(0,0,0,0.6); border: none; border-radius: 4px; color: white; padding: 4px 6px; cursor: pointer; font-size: 12px;
+  }
+  .controles-video-overlay button:hover { background: rgba(0,0,0,0.8); }
 </style>
 </head>
 <body>
@@ -315,12 +330,19 @@
       <span class="ponto-vivo"></span>
       <span id="rotulo-sala"></span>
     </div>
-    <div id="contagem">1 pessoa na sala</div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div id="contagem">1 pessoa na sala</div>
+      <button id="btn-config" title="Configurações" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:16px;">⚙️</button>
+    </div>
   </div>
 
   <div id="corpo">
     <div id="painel-video"></div>
     <div id="painel-chat">
+      <div id="painel-usuarios-voz" style="display: none; padding: 14px; border-bottom: 1px solid var(--line);">
+        <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Na chamada</div>
+        <div id="lista-voz" style="display: flex; flex-direction: column; gap: 6px;"></div>
+      </div>
       <div id="mensagens"></div>
       <form id="form-chat">
         <input id="input-chat" type="text" placeholder="mensagem..." autocomplete="off">
@@ -335,6 +357,35 @@
     <button class="botao-controle indisponivel" id="btn-tela" title="compartilhar tela">🖥️</button>
     <button class="botao-controle indisponivel ativo" id="btn-ruido" title="redução de ruído">🔉</button>
     <button class="botao-controle sair" id="btn-sair" title="sair">✕</button>
+  </div>
+</div>
+
+<div id="menu-contexto" style="display: none; position: absolute; background: var(--bg-panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); width: 200px;">
+  <div id="menu-nome" style="font-weight: bold; margin-bottom: 10px; font-size: 13px; color: var(--pink);"></div>
+  <div style="font-size: 12px; margin-bottom: 4px; color: var(--text-dim);">Volume</div>
+  <input type="range" id="range-vol-user" min="0" max="3" step="0.1" value="1" style="width: 100%;">
+</div>
+
+<div id="modal-config" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center;">
+  <div style="background: var(--bg-panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; width: 340px;">
+    <h3 style="margin: 0 0 16px; font-size: 16px;">Configurações</h3>
+    <div style="margin-bottom: 16px;">
+      <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+        <input type="checkbox" id="check-ruido" checked>
+        Supressão de Ruído
+      </label>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Volume Geral</div>
+      <input type="range" id="range-vol-geral" min="0" max="2" step="0.1" value="1" style="width: 100%;">
+    </div>
+    <div style="margin-bottom: 24px;">
+      <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Volume do seu Microfone</div>
+      <input type="range" id="range-vol-mic" min="0" max="2" step="0.1" value="1" style="width: 100%;">
+    </div>
+    <div style="text-align: right;">
+      <button id="btn-fechar-config" style="background: var(--pink); color: #21001b; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold; cursor: pointer;">Fechar</button>
+    </div>
   </div>
 </div>
 
@@ -353,6 +404,44 @@
   const conexoes = {};        // socketId -> { pc, polite, makingOffer, ignoreOffer }
   const streamsRemotos = {};  // socketId -> MediaStream combinada recebida
   const nomesRemotos = {};    // socketId -> nome (conhecido desde a entrada no chat)
+
+  let audioCtx;
+  let masterGain;
+  const remoteAudioNodes = {}; // id -> { audio, source, gain, muted, userVolume }
+  let localMicGain;
+  let localMicDest;
+  let originalStreamMic;
+
+  function getAudioContext() {
+      if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          masterGain = audioCtx.createGain();
+          masterGain.gain.value = parseFloat(document.getElementById('range-vol-geral').value);
+          masterGain.connect(audioCtx.destination);
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return { ctx: audioCtx, masterGain };
+  }
+
+  function handleRemoteAudioTrack(idRemoto, stream) {
+      if (remoteAudioNodes[idRemoto]) return;
+      if (stream.getAudioTracks().length === 0) return;
+      
+      const { ctx, masterGain } = getAudioContext();
+      const audio = new Audio();
+      audio.srcObject = stream;
+      audio.autoplay = true;
+      audio.muted = true; // prevent echo, Web Audio handles it
+      
+      const source = ctx.createMediaStreamSource(stream);
+      const gain = ctx.createGain();
+      gain.gain.value = 1.0;
+      
+      source.connect(gain);
+      gain.connect(masterGain);
+      
+      remoteAudioNodes[idRemoto] = { audio, source, gain, muted: false, userVolume: 1.0 };
+  }
 
   const configIce = {
     iceServers: [
@@ -412,16 +501,42 @@
       const video = document.createElement('video');
       video.autoplay = true;
       video.playsInline = true;
-      if (id === 'local') video.muted = true;
+      video.muted = true; // Web Audio handles audio, or it's local
       quadro.appendChild(video);
       const rot = document.createElement('div');
       rot.className = 'rotulo';
       quadro.appendChild(rot);
+
+      const controles = document.createElement('div');
+      controles.className = 'controles-video-overlay';
+      const btnMutar = document.createElement('button');
+      btnMutar.innerHTML = '🔊';
+      btnMutar.title = "Mutar Tela";
+      let userMuted = false;
+      btnMutar.onclick = () => {
+          userMuted = !userMuted;
+          btnMutar.innerHTML = userMuted ? '🔇' : '🔊';
+          if (remoteAudioNodes[id]) {
+              remoteAudioNodes[id].muted = userMuted;
+              remoteAudioNodes[id].gain.gain.value = userMuted ? 0 : remoteAudioNodes[id].userVolume;
+          }
+          if (userMuted) video.pause(); else video.play();
+      };
+      const btnFull = document.createElement('button');
+      btnFull.innerHTML = '🔲';
+      btnFull.title = "Tela Cheia";
+      btnFull.onclick = () => {
+          if (video.requestFullscreen) video.requestFullscreen();
+      };
+      controles.appendChild(btnMutar);
+      controles.appendChild(btnFull);
+      if (id !== 'local') quadro.appendChild(controles);
+
       painelVideo.appendChild(quadro);
     }
     const video = quadro.querySelector('video');
     if (video.srcObject !== stream) video.srcObject = stream;
-    quadro.querySelector('.rotulo').textContent = nome + ' · tela';
+    quadro.querySelector('.rotulo').textContent = nome + (id === 'local' ? ' (Você)' : '') + ' · tela';
   }
 
   function removerQuadro(id) {
@@ -451,6 +566,11 @@
       let ms = streamsRemotos[idRemoto];
       if (!ms) { ms = new MediaStream(); streamsRemotos[idRemoto] = ms; }
       ms.addTrack(evento.track);
+      
+      if (evento.track.kind === 'audio') {
+          handleRemoteAudioTrack(idRemoto, ms);
+      }
+      
       evento.track.onended = () => {
         ms.removeTrack(evento.track);
         if (ms.getVideoTracks().length === 0) removerQuadro(idRemoto);
@@ -506,15 +626,18 @@
   // ---- Canal de voz/tela (só entra quem clicou em 📞) ----
   socket.on('usuarios-na-voz', (usuarios) => {
     usuarios.forEach(u => criarConexao(u.id, u.nome, true));
+    atualizarListaVoz();
   });
 
   socket.on('novo-usuario-voz', ({ id, nome }) => {
     if (!emChamada) return;
     criarConexao(id, nome, false);
+    atualizarListaVoz();
   });
 
   socket.on('usuario-saiu-voz', ({ id }) => {
     fecharConexao(id);
+    atualizarListaVoz();
   });
 
   socket.on('sinal', async ({ de, sinal }) => {
@@ -583,6 +706,99 @@
     return d.innerHTML;
   }
 
+  // ---------- Lista de Voz & Menus ----------
+  const listaVozUI = document.getElementById('lista-voz');
+  const painelUsuariosVoz = document.getElementById('painel-usuarios-voz');
+
+  function atualizarListaVoz() {
+      listaVozUI.innerHTML = '';
+      if (emChamada) {
+          listaVozUI.appendChild(criarItemVoz('local', meuNome + ' (Você)'));
+      }
+      Object.keys(conexoes).forEach(id => {
+          listaVozUI.appendChild(criarItemVoz(id, nomesRemotos[id] || 'convidado'));
+      });
+  }
+
+  function criarItemVoz(id, nome) {
+      const div = document.createElement('div');
+      div.className = 'item-voz';
+      div.innerHTML = `<span class="ponto-vivo" style="display:inline-block; margin-right:6px;"></span>${escapeHtml(nome)}`;
+      if (id !== 'local') {
+          div.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              abrirMenuContexto(e.pageX, e.pageY, id, nome);
+          });
+      }
+      return div;
+  }
+
+  let usuarioContextoAtual = null;
+  const menuContexto = document.getElementById('menu-contexto');
+  const menuNome = document.getElementById('menu-nome');
+  const rangeVolUser = document.getElementById('range-vol-user');
+
+  function abrirMenuContexto(x, y, id, nome) {
+      usuarioContextoAtual = id;
+      menuNome.textContent = nome;
+      if (remoteAudioNodes[id]) {
+          rangeVolUser.value = remoteAudioNodes[id].userVolume || 1;
+      } else {
+          rangeVolUser.value = 1;
+      }
+      menuContexto.style.display = 'block';
+      menuContexto.style.left = x + 'px';
+      menuContexto.style.top = y + 'px';
+  }
+
+  document.addEventListener('click', (e) => {
+      if (!menuContexto.contains(e.target)) {
+          menuContexto.style.display = 'none';
+      }
+  });
+
+  rangeVolUser.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      const id = usuarioContextoAtual;
+      if (id && remoteAudioNodes[id]) {
+          remoteAudioNodes[id].userVolume = val;
+          const isMuted = remoteAudioNodes[id].muted;
+          remoteAudioNodes[id].gain.gain.value = isMuted ? 0 : val;
+      }
+  });
+  
+  // ---------- Configurações Modal ----------
+  const btnConfig = document.getElementById('btn-config');
+  const modalConfig = document.getElementById('modal-config');
+  const btnFecharConfig = document.getElementById('btn-fechar-config');
+  const checkRuido = document.getElementById('check-ruido');
+  const rangeVolGeral = document.getElementById('range-vol-geral');
+  const rangeVolMic = document.getElementById('range-vol-mic');
+
+  btnConfig.addEventListener('click', () => { modalConfig.style.display = 'flex'; });
+  btnFecharConfig.addEventListener('click', () => { modalConfig.style.display = 'none'; });
+
+  checkRuido.addEventListener('change', async (e) => {
+      reducaoRuidoAtiva = e.target.checked;
+      btnRuido.classList.toggle('ativo', reducaoRuidoAtiva);
+      btnRuido.textContent = reducaoRuidoAtiva ? '🔉' : '🔊';
+      if (originalStreamMic) {
+          const trilha = originalStreamMic.getAudioTracks()[0];
+          try { await trilha.applyConstraints({ noiseSuppression: reducaoRuidoAtiva }); } 
+          catch (err) { console.warn(err); }
+      }
+  });
+
+  rangeVolGeral.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (masterGain) masterGain.gain.value = val;
+  });
+
+  rangeVolMic.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (localMicGain) localMicGain.gain.value = val;
+  });
+
   // ---------- Entrar / sair da chamada (opt-in — nada disso acontece sozinho) ----------
   btnChamada.addEventListener('click', () => {
     if (emChamada) sairDaChamada(); else entrarNaChamada();
@@ -591,7 +807,7 @@
   async function entrarNaChamada() {
     if (emChamada) return;
     try {
-      streamMic = await navigator.mediaDevices.getUserMedia({
+      originalStreamMic = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: reducaoRuidoAtiva,
@@ -599,15 +815,27 @@
         },
         video: false
       });
+      
+      const ctxData = getAudioContext();
+      const source = ctxData.ctx.createMediaStreamSource(originalStreamMic);
+      localMicGain = ctxData.ctx.createGain();
+      localMicGain.gain.value = parseFloat(rangeVolMic.value);
+      localMicDest = ctxData.ctx.createMediaStreamDestination();
+      
+      source.connect(localMicGain);
+      localMicGain.connect(localMicDest);
+      
+      streamMic = localMicDest.stream; 
+      
     } catch (e) {
-      // Sem microfone (permissão negada ou indisponível) — segue mesmo assim,
-      // só ouvindo e podendo compartilhar tela.
       streamMic = null;
+      originalStreamMic = null;
     }
 
     emChamada = true;
     socket.emit('entrar-voz', { sala: minhaSala });
     atualizarUiChamada();
+    atualizarListaVoz();
   }
 
   function sairDaChamada() {
@@ -616,6 +844,10 @@
 
     Object.keys(conexoes).forEach(fecharConexao);
 
+    if (originalStreamMic) {
+      originalStreamMic.getTracks().forEach(t => t.stop());
+      originalStreamMic = null;
+    }
     if (streamMic) {
       streamMic.getTracks().forEach(t => t.stop());
       streamMic = null;
@@ -624,6 +856,7 @@
     emChamada = false;
     socket.emit('sair-voz', { sala: minhaSala });
     atualizarUiChamada();
+    atualizarListaVoz();
   }
 
   function atualizarUiChamada() {
@@ -632,6 +865,8 @@
     btnChamada.title = emChamada ? 'sair da chamada' : 'entrar na chamada';
 
     [btnMic, btnTela, btnRuido].forEach(b => b.classList.toggle('indisponivel', !emChamada));
+    
+    painelUsuariosVoz.style.display = emChamada ? 'block' : 'none';
 
     if (emChamada) {
       btnMic.classList.toggle('indisponivel', !streamMic);
@@ -647,6 +882,9 @@
     if (!emChamada || !streamMic) return;
     micAtivo = !micAtivo;
     streamMic.getAudioTracks().forEach(t => t.enabled = micAtivo);
+    if (originalStreamMic) {
+        originalStreamMic.getAudioTracks().forEach(t => t.enabled = micAtivo);
+    }
     btnMic.classList.toggle('ativo', micAtivo);
     btnMic.textContent = micAtivo ? '🎤' : '🔇';
   });
