@@ -3,19 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>sala — chat, voz e tela</title>
+<title>👀 sala — chat, voz e tela</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%80%3C/text%3E%3C/svg%3E">
 <style>
   :root {
-    --bg: #0a0e1a;
-    --bg-panel: #0f1526;
-    --bg-raised: #151d33;
-    --line: #1e2a4a;
-    --text: #e6e9ef;
-    --text-dim: #7a85a0;
-    --signal: #ff69b4;
-    --signal-dim: #3d1a30;
-    --accent: #ff1493;
-    --danger: #ff3b5c;
+    --bg: #060818;
+    --bg-panel: #0a0e22;
+    --bg-raised: #131a38;
+    --line: #232c56;
+    --text: #f3eefc;
+    --text-dim: #8d92c0;
+    --pink: #ff4fd0;
+    --pink-soft: #ff8ce0;
+    --pink-dim: #3a1240;
+    --danger: #ff5f6d;
     --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
@@ -37,16 +38,23 @@
     align-items: center;
     justify-content: center;
     background:
-      radial-gradient(circle at 20% 20%, rgba(255,105,180,0.08), transparent 40%),
-      radial-gradient(circle at 80% 80%, rgba(255,20,147,0.06), transparent 40%),
+      radial-gradient(circle at 18% 20%, rgba(255,79,208,0.10), transparent 42%),
+      radial-gradient(circle at 82% 78%, rgba(120,90,255,0.08), transparent 42%),
       var(--bg);
   }
   .cartao-entrada {
     width: 340px;
     background: var(--bg-panel);
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 32px;
+    text-align: center;
+  }
+  .logo-emoji {
+    font-size: 46px;
+    line-height: 1;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 0 18px rgba(255,79,208,0.35));
   }
   .cartao-entrada h1 {
     font-size: 15px;
@@ -62,7 +70,7 @@
     color: var(--text-dim);
     margin: 0 0 24px;
   }
-  .campo { margin-bottom: 14px; }
+  .campo { margin-bottom: 14px; text-align: left; }
   .campo label {
     display: block;
     font-size: 11px;
@@ -82,12 +90,12 @@
     font-size: 14px;
     outline: none;
   }
-  .campo input:focus { border-color: var(--signal); }
+  .campo input:focus { border-color: var(--pink); }
   #btn-entrar {
     width: 100%;
     margin-top: 8px;
-    background: var(--accent);
-    color: #fff;
+    background: var(--pink);
+    color: #21001b;
     border: none;
     border-radius: 6px;
     padding: 11px;
@@ -121,11 +129,12 @@
     align-items: center;
     gap: 8px;
   }
+  .logo-mini { font-size: 15px; }
   .ponto-vivo {
     width: 7px; height: 7px;
     border-radius: 50%;
-    background: var(--signal);
-    box-shadow: 0 0 0 3px var(--signal-dim);
+    background: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-dim);
   }
   #contagem { font-size: 12px; color: var(--text-dim); }
 
@@ -141,6 +150,14 @@
     align-content: start;
     overflow-y: auto;
   }
+  #painel-video:empty::before {
+    content: 'Ninguém compartilhando tela no momento';
+    grid-column: 1 / -1;
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+    padding: 40px 0;
+  }
   .quadro-video {
     position: relative;
     background: #000;
@@ -155,7 +172,7 @@
   .quadro-video video {
     width: 100%; height: 100%;
     object-fit: contain;
-    background: #05070a;
+    background: #05060f;
   }
   .quadro-video .rotulo {
     position: absolute;
@@ -163,24 +180,9 @@
     font-size: 12px;
     font-family: var(--mono);
     color: var(--text);
-    background: rgba(0,0,0,0.55);
+    background: rgba(0,0,0,0.6);
     padding: 2px 8px;
     border-radius: 4px;
-  }
-  .quadro-video.sem-video {
-    flex-direction: column;
-    gap: 8px;
-    color: var(--text-dim);
-    font-size: 12px;
-  }
-  .avatar-letra {
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    background: var(--bg-raised);
-    border: 1px solid var(--line);
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700;
-    color: var(--signal);
   }
 
   /* Chat lateral */
@@ -203,7 +205,7 @@
   .msg { font-size: 13px; line-height: 1.4; }
   .msg .nome {
     font-weight: 700;
-    color: var(--signal);
+    color: var(--pink);
     font-size: 12px;
     margin-right: 6px;
   }
@@ -229,7 +231,7 @@
     font-size: 13px;
     outline: none;
   }
-  #input-chat:focus { border-color: var(--signal); }
+  #input-chat:focus { border-color: var(--pink); }
   #form-chat button {
     background: var(--bg-raised);
     border: 1px solid var(--line);
@@ -239,7 +241,7 @@
     font-size: 13px;
     cursor: pointer;
   }
-  #form-chat button:hover { border-color: var(--signal); }
+  #form-chat button:hover { border-color: var(--pink); }
 
   /* Barra de controles */
   #barra-controles {
@@ -261,33 +263,27 @@
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     font-size: 18px;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
   }
   .botao-controle:hover { border-color: var(--text-dim); }
   .botao-controle.ativo {
-    background: var(--signal-dim);
-    border-color: var(--signal);
-    color: var(--signal);
+    background: var(--pink-dim);
+    border-color: var(--pink);
+    color: var(--pink-soft);
   }
+  .botao-controle.indisponivel {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .botao-controle.chamada { background: var(--pink); color: #21001b; border-color: var(--pink); }
+  .botao-controle.chamada:hover { filter: brightness(1.08); }
+  .botao-controle.chamada.ativo { background: var(--danger); border-color: var(--danger); color: #2a0004; }
   .botao-controle.sair {
     background: var(--danger);
     border-color: var(--danger);
     color: #fff;
   }
   .botao-controle.sair:hover { filter: brightness(1.1); }
-  .botao-controle.entrar-call {
-    width: auto;
-    border-radius: 8px;
-    padding: 0 18px;
-    font-size: 13px;
-    font-weight: 700;
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-    gap: 6px;
-  }
-  .botao-controle.entrar-call:hover { filter: brightness(1.12); }
-  .controles-call-ocultos { display: none !important; }
 </style>
 </head>
 <body>
@@ -295,6 +291,7 @@
 <!-- ===== Tela de entrada ===== -->
 <div id="tela-entrada">
   <div class="cartao-entrada">
+    <div class="logo-emoji">👀</div>
     <h1>entrar na sala</h1>
     <p class="sub">chat · voz · compartilhar tela</p>
     <div class="campo">
@@ -314,6 +311,7 @@
 <div id="app">
   <div id="barra-topo">
     <div class="info-sala">
+      <span class="logo-mini">👀</span>
       <span class="ponto-vivo"></span>
       <span id="rotulo-sala"></span>
     </div>
@@ -332,13 +330,11 @@
   </div>
 
   <div id="barra-controles">
-    <button class="botao-controle entrar-call" id="btn-entrar-call" title="entrar na chamada de voz">🎧 entrar na call</button>
-    <span id="controles-call" class="controles-call-ocultos" style="display:contents">
-      <button class="botao-controle" id="btn-mic" title="microfone">🎤</button>
-      <button class="botao-controle" id="btn-tela" title="compartilhar tela">🖥️</button>
-      <button class="botao-controle sair" id="btn-sair-call" title="sair da call">📵</button>
-    </span>
-    <button class="botao-controle sair" id="btn-sair" title="sair da sala">✕</button>
+    <button class="botao-controle chamada" id="btn-chamada" title="entrar na chamada">📞</button>
+    <button class="botao-controle indisponivel" id="btn-mic" title="microfone">🎤</button>
+    <button class="botao-controle indisponivel" id="btn-tela" title="compartilhar tela">🖥️</button>
+    <button class="botao-controle indisponivel ativo" id="btn-ruido" title="redução de ruído">🔉</button>
+    <button class="botao-controle sair" id="btn-sair" title="sair">✕</button>
   </div>
 </div>
 
@@ -350,12 +346,13 @@
   // ---------- Estado ----------
   let meuNome = '';
   let minhaSala = '';
-  let streamMic = null;      // MediaStream do microfone (áudio local)
-  let streamTela = null;     // MediaStream da tela compartilhada (se ativo)
-  let naCall = false;        // se está na chamada de voz
-  const conexoes = {};       // socketId -> RTCPeerConnection
-  const streamsRemotos = {}; // socketId -> MediaStream combinada recebida
-  const nomesRemotos = {};   // socketId -> nome
+  let emChamada = false;
+  let streamMic = null;       // MediaStream do microfone (só existe durante a chamada)
+  let streamTela = null;      // MediaStream da tela compartilhada (se ativo)
+  let reducaoRuidoAtiva = true;
+  const conexoes = {};        // socketId -> { pc, polite, makingOffer, ignoreOffer }
+  const streamsRemotos = {};  // socketId -> MediaStream combinada recebida
+  const nomesRemotos = {};    // socketId -> nome (conhecido desde a entrada no chat)
 
   const configIce = {
     iceServers: [
@@ -366,7 +363,7 @@
 
   // ---------- Elementos ----------
   const telaEntrada = document.getElementById('tela-entrada');
-  const appEl = document.getElementById('app');
+  const app = document.getElementById('app');
   const inputNome = document.getElementById('input-nome');
   const inputSala = document.getElementById('input-sala');
   const btnEntrar = document.getElementById('btn-entrar');
@@ -377,14 +374,13 @@
   const mensagens = document.getElementById('mensagens');
   const formChat = document.getElementById('form-chat');
   const inputChat = document.getElementById('input-chat');
+  const btnChamada = document.getElementById('btn-chamada');
   const btnMic = document.getElementById('btn-mic');
   const btnTela = document.getElementById('btn-tela');
+  const btnRuido = document.getElementById('btn-ruido');
   const btnSair = document.getElementById('btn-sair');
-  const btnEntrarCall = document.getElementById('btn-entrar-call');
-  const btnSairCall = document.getElementById('btn-sair-call');
-  const controlesCall = document.getElementById('controles-call');
 
-  // ---------- Entrada na sala (somente chat, sem microfone obrigatório) ----------
+  // ---------- Entrada na sala (só chat, sem pedir mic/câmera) ----------
   btnEntrar.addEventListener('click', entrarNaSala);
   inputSala.addEventListener('keydown', e => { if (e.key === 'Enter') entrarNaSala(); });
 
@@ -400,84 +396,14 @@
     minhaSala = sala;
 
     telaEntrada.style.display = 'none';
-    appEl.style.display = 'flex';
+    app.style.display = 'flex';
     rotuloSala.textContent = sala;
 
-    // Entra na sala apenas para chat — sem pedir mic, sem WebRTC
     socket.emit('entrar-sala', { sala, nome });
   }
 
-  // ---------- Entrar na call de voz (manualmente) ----------
-  btnEntrarCall.addEventListener('click', async () => {
-    if (naCall) return;
-
-    // Tenta pegar o microfone, mas se não conseguir, entra mudo
-    try {
-      streamMic = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      streamMic.getAudioTracks().forEach(t => t.enabled = true);
-      micAtivo = true;
-      btnMic.classList.add('ativo');
-      btnMic.textContent = '🎤';
-    } catch (e) {
-      // Sem microfone — entra mudo, sem problemas
-      streamMic = null;
-      micAtivo = false;
-      btnMic.classList.remove('ativo');
-      btnMic.textContent = '🔇';
-    }
-
-    naCall = true;
-    btnEntrarCall.classList.add('controles-call-ocultos');
-    controlesCall.classList.remove('controles-call-ocultos');
-
-    adicionarMensagemSistema('você entrou na chamada de voz.');
-
-    // Inicia conexões WebRTC com quem já está na sala
-    // Pede a lista de usuários novamente para conectar
-    const usuariosNaSala = Object.keys(nomesRemotos);
-    usuariosNaSala.forEach(id => {
-      if (!conexoes[id]) {
-        criarConexao(id, nomesRemotos[id], true);
-      }
-    });
-  });
-
-  // ---------- Sair da call (sem sair da sala) ----------
-  btnSairCall.addEventListener('click', () => {
-    sairDaCall();
-  });
-
-  function sairDaCall() {
-    if (!naCall) return;
-    naCall = false;
-
-    // Fecha todas as conexões WebRTC
-    Object.keys(conexoes).forEach(id => {
-      conexoes[id].close();
-      delete conexoes[id];
-      delete streamsRemotos[id];
-      removerQuadro(id);
-    });
-
-    // Para o microfone
-    if (streamMic) {
-      streamMic.getTracks().forEach(t => t.stop());
-      streamMic = null;
-    }
-
-    // Para compartilhamento de tela
-    pararCompartilhamentoTela();
-
-    removerQuadro('local');
-
-    btnEntrarCall.classList.remove('controles-call-ocultos');
-    controlesCall.classList.add('controles-call-ocultos');
-
-    adicionarMensagemSistema('você saiu da chamada de voz.');
-  }
-
-  // ---------- Quadro de vídeo ----------
-  function criarOuAtualizarQuadro(id, nome, stream, ehTelaCompartilhada) {
+  // ---------- Quadros de vídeo (tela compartilhada) ----------
+  function criarOuAtualizarQuadro(id, nome, stream) {
     let quadro = document.getElementById('quadro-' + id);
     if (!quadro) {
       quadro = document.createElement('div');
@@ -494,9 +420,8 @@
       painelVideo.appendChild(quadro);
     }
     const video = quadro.querySelector('video');
-    video.srcObject = stream;
-    quadro.querySelector('.rotulo').textContent = nome + (ehTelaCompartilhada ? ' · tela' : '');
-    quadro.classList.remove('sem-video');
+    if (video.srcObject !== stream) video.srcObject = stream;
+    quadro.querySelector('.rotulo').textContent = nome + ' · tela';
   }
 
   function removerQuadro(id) {
@@ -504,17 +429,15 @@
     if (quadro) quadro.remove();
   }
 
-  // ---------- WebRTC: criação de conexão ponto a ponto ----------
-  function criarConexao(idRemoto, nomeRemoto, iniciador) {
+  // ---------- WebRTC: negociação perfeita (funciona nos dois sentidos) ----------
+  // Sem isso, só quem "iniciou" a conexão conseguia renegociar ao adicionar uma
+  // nova trilha (como a tela compartilhada) — por isso só um lado enxergava a tela.
+  function criarConexao(idRemoto, nomeRemoto, souIniciador) {
     const pc = new RTCPeerConnection(configIce);
-    conexoes[idRemoto] = pc;
+    const estado = { pc, polite: !souIniciador, makingOffer: false, ignoreOffer: false };
+    conexoes[idRemoto] = estado;
+    nomesRemotos[idRemoto] = nomeRemoto;
 
-    // BUGFIX 2: Força a conexão a suportar áudio e vídeo desde o início,
-    // para que pessoas que entram depois consigam ver a tela de quem já estava compartilhando.
-    if (!streamMic) pc.addTransceiver('audio', { direction: 'recvonly' });
-    if (!streamTela) pc.addTransceiver('video', { direction: 'recvonly' });
-
-    // envia meu áudio (e tela, se estiver compartilhando)
     if (streamMic) streamMic.getTracks().forEach(t => pc.addTrack(t, streamMic));
     if (streamTela) streamTela.getTracks().forEach(t => pc.addTrack(t, streamTela));
 
@@ -526,88 +449,100 @@
 
     pc.ontrack = (evento) => {
       let ms = streamsRemotos[idRemoto];
-      if (!ms) {
-        ms = new MediaStream();
-        streamsRemotos[idRemoto] = ms;
-      }
+      if (!ms) { ms = new MediaStream(); streamsRemotos[idRemoto] = ms; }
       ms.addTrack(evento.track);
-      
-      const temVideo = ms.getVideoTracks().length > 0;
-      // BUGFIX: Sempre chama a função para atualizar o componente visual
-      criarOuAtualizarQuadro(idRemoto, nomeRemoto, ms, temVideo);
+      evento.track.onended = () => {
+        ms.removeTrack(evento.track);
+        if (ms.getVideoTracks().length === 0) removerQuadro(idRemoto);
+      };
+      if (ms.getVideoTracks().length > 0) criarOuAtualizarQuadro(idRemoto, nomeRemoto, ms);
     };
 
     pc.onconnectionstatechange = () => {
-      if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
-        removerQuadro(idRemoto);
-      }
+      if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) removerQuadro(idRemoto);
     };
 
-    // BUGFIX 1: Permite renegociação para AMBOS os lados quando uma nova trilha (tela) é adicionada,
-    // mas evita que o não-iniciador crie a oferta inicial antes de receber a primeira oferta.
     pc.onnegotiationneeded = async () => {
-      if (!iniciador && pc.currentRemoteDescription === null) return;
       try {
+        estado.makingOffer = true;
         const oferta = await pc.createOffer();
         await pc.setLocalDescription(oferta);
         socket.emit('sinal', { para: idRemoto, sinal: { tipo: 'oferta', sdp: pc.localDescription } });
-      } catch (e) { console.error('Erro na renegociação:', e); }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        estado.makingOffer = false;
+      }
     };
 
-    return pc;
+    return estado;
+  }
+
+  function fecharConexao(id) {
+    if (conexoes[id]) { conexoes[id].pc.close(); delete conexoes[id]; }
+    delete streamsRemotos[id];
+    removerQuadro(id);
   }
 
   // ---------- Eventos de sinalização (Socket.IO) ----------
   socket.on('usuarios-na-sala', (usuarios) => {
-    atualizarContagem(usuarios.length + 1);
-    // Armazena os nomes de todos os usuários (para quando entrar na call)
     usuarios.forEach(u => { nomesRemotos[u.id] = u.nome; });
-    // Só cria conexões WebRTC se já está na call
-    if (naCall) {
-      usuarios.forEach(u => criarConexao(u.id, u.nome, true));
-    }
+    atualizarContagem(usuarios.length + 1);
   });
 
   socket.on('novo-usuario', ({ id, nome }) => {
     nomesRemotos[id] = nome;
     adicionarMensagemSistema(nome + ' entrou na sala.');
     atualizarContagem(Object.keys(nomesRemotos).length + 1);
-    // Só cria conexão WebRTC se já está na call
-    if (naCall) {
-      criarConexao(id, nome, false);
-    }
   });
 
   socket.on('usuario-saiu', ({ id, nome }) => {
-    if (conexoes[id]) { conexoes[id].close(); delete conexoes[id]; }
-    delete streamsRemotos[id];
+    fecharConexao(id);
     delete nomesRemotos[id];
-    removerQuadro(id);
     adicionarMensagemSistema((nome || 'alguém') + ' saiu da sala.');
     atualizarContagem(Object.keys(nomesRemotos).length + 1);
   });
 
+  // ---- Canal de voz/tela (só entra quem clicou em 📞) ----
+  socket.on('usuarios-na-voz', (usuarios) => {
+    usuarios.forEach(u => criarConexao(u.id, u.nome, true));
+  });
+
+  socket.on('novo-usuario-voz', ({ id, nome }) => {
+    if (!emChamada) return;
+    criarConexao(id, nome, false);
+  });
+
+  socket.on('usuario-saiu-voz', ({ id }) => {
+    fecharConexao(id);
+  });
+
   socket.on('sinal', async ({ de, sinal }) => {
-    if (!naCall) return; // ignora sinais se não está na call
-    let pc = conexoes[de];
-    if (!pc) {
-      pc = criarConexao(de, nomesRemotos[de] || 'convidado', false);
-    }
-    
-    try {
-      if (sinal.tipo === 'oferta') {
-        // Recebeu uma oferta (seja inicial ou de renegociação para tela)
+    let estado = conexoes[de];
+    if (!estado) estado = criarConexao(de, nomesRemotos[de] || 'convidado', false);
+    const { pc, polite } = estado;
+
+    if (sinal.tipo === 'oferta') {
+      const colisao = estado.makingOffer || pc.signalingState !== 'stable';
+      estado.ignoreOffer = !polite && colisao;
+      if (estado.ignoreOffer) return;
+
+      if (colisao) {
+        await Promise.all([
+          pc.setLocalDescription({ type: 'rollback' }),
+          pc.setRemoteDescription(new RTCSessionDescription(sinal.sdp))
+        ]);
+      } else {
         await pc.setRemoteDescription(new RTCSessionDescription(sinal.sdp));
-        const resposta = await pc.createAnswer();
-        await pc.setLocalDescription(resposta);
-        socket.emit('sinal', { para: de, sinal: { tipo: 'resposta', sdp: pc.localDescription } });
-      } else if (sinal.tipo === 'resposta') {
-        await pc.setRemoteDescription(new RTCSessionDescription(sinal.sdp));
-      } else if (sinal.tipo === 'ice') {
-        await pc.addIceCandidate(sinal.candidate);
       }
-    } catch (e) {
-      console.error('Erro de sinalização WebRTC:', e);
+      const resposta = await pc.createAnswer();
+      await pc.setLocalDescription(resposta);
+      socket.emit('sinal', { para: de, sinal: { tipo: 'resposta', sdp: pc.localDescription } });
+    } else if (sinal.tipo === 'resposta') {
+      await pc.setRemoteDescription(new RTCSessionDescription(sinal.sdp));
+    } else if (sinal.tipo === 'ice') {
+      try { await pc.addIceCandidate(sinal.candidate); }
+      catch (e) { if (!estado.ignoreOffer) console.error(e); }
     }
   });
 
@@ -648,43 +583,94 @@
     return d.innerHTML;
   }
 
-  // ---------- Microfone ----------
-  let micAtivo = false;
-  btnMic.addEventListener('click', async () => {
-    if (!naCall) return;
+  // ---------- Entrar / sair da chamada (opt-in — nada disso acontece sozinho) ----------
+  btnChamada.addEventListener('click', () => {
+    if (emChamada) sairDaChamada(); else entrarNaChamada();
+  });
 
-    // Se não tem stream de mic ainda, tenta adquirir
-    if (!streamMic) {
-      try {
-        streamMic = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        streamMic.getAudioTracks().forEach(t => t.enabled = true);
-        micAtivo = true;
-        btnMic.classList.add('ativo');
-        btnMic.textContent = '🎤';
-        // Adiciona as tracks nas conexões existentes
-        Object.values(conexoes).forEach(pc => {
-          streamMic.getTracks().forEach(t => pc.addTrack(t, streamMic));
-        });
-      } catch (e) {
-        adicionarMensagemSistema('não foi possível acessar o microfone.');
-        return;
-      }
-      return;
+  async function entrarNaChamada() {
+    if (emChamada) return;
+    try {
+      streamMic = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: reducaoRuidoAtiva,
+          autoGainControl: true
+        },
+        video: false
+      });
+    } catch (e) {
+      // Sem microfone (permissão negada ou indisponível) — segue mesmo assim,
+      // só ouvindo e podendo compartilhar tela.
+      streamMic = null;
     }
 
+    emChamada = true;
+    socket.emit('entrar-voz', { sala: minhaSala });
+    atualizarUiChamada();
+  }
+
+  function sairDaChamada() {
+    if (!emChamada) return;
+    if (streamTela) pararCompartilhamentoTela();
+
+    Object.keys(conexoes).forEach(fecharConexao);
+
+    if (streamMic) {
+      streamMic.getTracks().forEach(t => t.stop());
+      streamMic = null;
+    }
+
+    emChamada = false;
+    socket.emit('sair-voz', { sala: minhaSala });
+    atualizarUiChamada();
+  }
+
+  function atualizarUiChamada() {
+    btnChamada.classList.toggle('ativo', emChamada);
+    btnChamada.textContent = emChamada ? '📵' : '📞';
+    btnChamada.title = emChamada ? 'sair da chamada' : 'entrar na chamada';
+
+    [btnMic, btnTela, btnRuido].forEach(b => b.classList.toggle('indisponivel', !emChamada));
+
+    if (emChamada) {
+      btnMic.classList.toggle('indisponivel', !streamMic);
+      btnMic.textContent = streamMic ? '🎤' : '🔇';
+      btnMic.title = streamMic ? 'microfone' : 'microfone indisponível';
+      btnRuido.classList.toggle('indisponivel', !streamMic);
+    }
+  }
+
+  // ---------- Microfone ----------
+  let micAtivo = true;
+  btnMic.addEventListener('click', () => {
+    if (!emChamada || !streamMic) return;
     micAtivo = !micAtivo;
     streamMic.getAudioTracks().forEach(t => t.enabled = micAtivo);
     btnMic.classList.toggle('ativo', micAtivo);
     btnMic.textContent = micAtivo ? '🎤' : '🔇';
   });
 
+  // ---------- Redução de ruído ----------
+  btnRuido.addEventListener('click', async () => {
+    if (!emChamada || !streamMic) return;
+    reducaoRuidoAtiva = !reducaoRuidoAtiva;
+    const trilha = streamMic.getAudioTracks()[0];
+    try {
+      await trilha.applyConstraints({ noiseSuppression: reducaoRuidoAtiva });
+    } catch (e) {
+      console.warn('este navegador não permite alternar a redução de ruído em tempo real', e);
+    }
+    btnRuido.classList.toggle('ativo', reducaoRuidoAtiva);
+    btnRuido.textContent = reducaoRuidoAtiva ? '🔉' : '🔊';
+    btnRuido.title = reducaoRuidoAtiva ? 'redução de ruído: ativada' : 'redução de ruído: desativada';
+  });
+
   // ---------- Compartilhar tela ----------
   btnTela.addEventListener('click', async () => {
-    if (!naCall) return;
-    if (streamTela) {
-      pararCompartilhamentoTela();
-      return;
-    }
+    if (!emChamada) return;
+    if (streamTela) { pararCompartilhamentoTela(); return; }
+
     try {
       streamTela = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
     } catch (e) {
@@ -694,19 +680,20 @@
     const trilhaTela = streamTela.getVideoTracks()[0];
     trilhaTela.onended = pararCompartilhamentoTela;
 
-    // adiciona a trilha em todas as conexões existentes
-    Object.values(conexoes).forEach(pc => pc.addTrack(trilhaTela, streamTela));
+    // Adiciona a trilha em todas as conexões — o onnegotiationneeded cuida de
+    // avisar o outro lado, não importa quem começou a chamada.
+    Object.values(conexoes).forEach(estado => estado.pc.addTrack(trilhaTela, streamTela));
 
-    criarOuAtualizarQuadro('local', meuNome, streamTela, true);
+    criarOuAtualizarQuadro('local', meuNome, streamTela);
     btnTela.classList.add('ativo');
   });
 
   function pararCompartilhamentoTela() {
     if (!streamTela) return;
     const trilha = streamTela.getVideoTracks()[0];
-    Object.values(conexoes).forEach(pc => {
-      const remetente = pc.getSenders().find(s => s.track === trilha);
-      if (remetente) pc.removeTrack(remetente);
+    Object.values(conexoes).forEach(estado => {
+      const remetente = estado.pc.getSenders().find(s => s.track === trilha);
+      if (remetente) estado.pc.removeTrack(remetente);
     });
     streamTela.getTracks().forEach(t => t.stop());
     streamTela = null;

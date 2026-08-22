@@ -13,32 +13,48 @@ const io = new Server(server, {
 // quanto dentro do app empacotado (.exe), onde a pasta atual é diferente.
 app.use(express.static(path.join(__dirname, 'public')));
 
-// sala -> lista de { socketId, nome }
-const salas = {};
+// socketId -> nome (válido durante toda a conexão)
+const nomesPorSocket = {};
+
+function membrosDaSala(sala, excluirId) {
+  const set = io.sockets.adapter.rooms.get(sala);
+  if (!set) return [];
+  return [...set]
+    .filter((id) => id !== excluirId)
+    .map((id) => ({ id, nome: nomesPorSocket[id] || 'convidado' }));
+}
 
 io.on('connection', (socket) => {
   let salaAtual = null;
-  let nomeAtual = null;
 
+  // Entrar na sala = só chat e presença. NÃO conecta voz/câmera/tela automaticamente.
   socket.on('entrar-sala', ({ sala, nome }) => {
     salaAtual = sala;
-    nomeAtual = nome;
+    nomesPorSocket[socket.id] = nome;
     socket.join(sala);
 
-    if (!salas[sala]) salas[sala] = [];
-
-    // avisa aos que já estão na sala que alguém novo chegou
-    const outros = salas[sala].map(u => ({ id: u.socketId, nome: u.nome }));
-    socket.emit('usuarios-na-sala', outros);
-
-    salas[sala].push({ socketId: socket.id, nome });
-
+    socket.emit('usuarios-na-sala', membrosDaSala(sala, socket.id));
     socket.to(sala).emit('novo-usuario', { id: socket.id, nome });
   });
 
-  // Chat de texto
+  // Chat de texto (sempre ativo, independente da chamada)
   socket.on('mensagem-chat', ({ sala, nome, texto }) => {
     io.to(sala).emit('mensagem-chat', { nome, texto, hora: Date.now() });
+  });
+
+  // ---- Canal de voz/tela: opt-in, o usuário precisa clicar para entrar ----
+  socket.on('entrar-voz', ({ sala }) => {
+    const salaVoz = sala + ':voz';
+    const outros = membrosDaSala(salaVoz, socket.id);
+    socket.join(salaVoz);
+    socket.emit('usuarios-na-voz', outros);
+    socket.to(salaVoz).emit('novo-usuario-voz', { id: socket.id, nome: nomesPorSocket[socket.id] });
+  });
+
+  socket.on('sair-voz', ({ sala }) => {
+    const salaVoz = sala + ':voz';
+    socket.to(salaVoz).emit('usuario-saiu-voz', { id: socket.id });
+    socket.leave(salaVoz);
   });
 
   // Sinalização WebRTC (repassa para o destinatário específico)
@@ -47,15 +63,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    if (salaAtual && salas[salaAtual]) {
-      salas[salaAtual] = salas[salaAtual].filter(u => u.socketId !== socket.id);
-      socket.to(salaAtual).emit('usuario-saiu', { id: socket.id, nome: nomeAtual });
-      if (salas[salaAtual].length === 0) delete salas[salaAtual];
+    if (salaAtual) {
+      socket.to(salaAtual).emit('usuario-saiu', { id: socket.id, nome: nomesPorSocket[socket.id] });
+      socket.to(salaAtual + ':voz').emit('usuario-saiu-voz', { id: socket.id });
     }
+    delete nomesPorSocket[socket.id];
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
