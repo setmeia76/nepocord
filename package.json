@@ -1,0 +1,10 @@
+{
+  "name": "discord2",
+  "version": "1.0.0",
+  "description": "App de chat, voz e compartilhamento de tela para grupos de amigos",
+  "main": "main.js",
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
