@@ -509,6 +509,11 @@
     const pc = new RTCPeerConnection(configIce);
     conexoes[idRemoto] = pc;
 
+    // BUGFIX 2: Força a conexão a suportar áudio e vídeo desde o início,
+    // para que pessoas que entram depois consigam ver a tela de quem já estava compartilhando.
+    if (!streamMic) pc.addTransceiver('audio', { direction: 'recvonly' });
+    if (!streamTela) pc.addTransceiver('video', { direction: 'recvonly' });
+
     // envia meu áudio (e tela, se estiver compartilhando)
     if (streamMic) streamMic.getTracks().forEach(t => pc.addTrack(t, streamMic));
     if (streamTela) streamTela.getTracks().forEach(t => pc.addTrack(t, streamTela));
@@ -526,10 +531,10 @@
         streamsRemotos[idRemoto] = ms;
       }
       ms.addTrack(evento.track);
+      
       const temVideo = ms.getVideoTracks().length > 0;
-      if (temVideo) {
-        criarOuAtualizarQuadro(idRemoto, nomeRemoto, ms, true);
-      }
+      // BUGFIX: Sempre chama a função para atualizar o componente visual
+      criarOuAtualizarQuadro(idRemoto, nomeRemoto, ms, temVideo);
     };
 
     pc.onconnectionstatechange = () => {
@@ -538,15 +543,16 @@
       }
     };
 
-    if (iniciador) {
-      pc.onnegotiationneeded = async () => {
-        try {
-          const oferta = await pc.createOffer();
-          await pc.setLocalDescription(oferta);
-          socket.emit('sinal', { para: idRemoto, sinal: { tipo: 'oferta', sdp: pc.localDescription } });
-        } catch (e) { console.error(e); }
-      };
-    }
+    // BUGFIX 1: Permite renegociação para AMBOS os lados quando uma nova trilha (tela) é adicionada,
+    // mas evita que o não-iniciador crie a oferta inicial antes de receber a primeira oferta.
+    pc.onnegotiationneeded = async () => {
+      if (!iniciador && pc.currentRemoteDescription === null) return;
+      try {
+        const oferta = await pc.createOffer();
+        await pc.setLocalDescription(oferta);
+        socket.emit('sinal', { para: idRemoto, sinal: { tipo: 'oferta', sdp: pc.localDescription } });
+      } catch (e) { console.error('Erro na renegociação:', e); }
+    };
 
     return pc;
   }
@@ -587,15 +593,21 @@
     if (!pc) {
       pc = criarConexao(de, nomesRemotos[de] || 'convidado', false);
     }
-    if (sinal.tipo === 'oferta') {
-      await pc.setRemoteDescription(new RTCSessionDescription(sinal.sdp));
-      const resposta = await pc.createAnswer();
-      await pc.setLocalDescription(resposta);
-      socket.emit('sinal', { para: de, sinal: { tipo: 'resposta', sdp: pc.localDescription } });
-    } else if (sinal.tipo === 'resposta') {
-      await pc.setRemoteDescription(new RTCSessionDescription(sinal.sdp));
-    } else if (sinal.tipo === 'ice') {
-      try { await pc.addIceCandidate(sinal.candidate); } catch (e) { console.error(e); }
+    
+    try {
+      if (sinal.tipo === 'oferta') {
+        // Recebeu uma oferta (seja inicial ou de renegociação para tela)
+        await pc.setRemoteDescription(new RTCSessionDescription(sinal.sdp));
+        const resposta = await pc.createAnswer();
+        await pc.setLocalDescription(resposta);
+        socket.emit('sinal', { para: de, sinal: { tipo: 'resposta', sdp: pc.localDescription } });
+      } else if (sinal.tipo === 'resposta') {
+        await pc.setRemoteDescription(new RTCSessionDescription(sinal.sdp));
+      } else if (sinal.tipo === 'ice') {
+        await pc.addIceCandidate(sinal.candidate);
+      }
+    } catch (e) {
+      console.error('Erro de sinalização WebRTC:', e);
     }
   });
 
