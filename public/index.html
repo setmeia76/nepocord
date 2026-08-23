@@ -1126,14 +1126,30 @@
   // ---------- WebRTC: negociação perfeita (funciona nos dois sentidos) ----------
   // Sem isso, só quem "iniciou" a conexão conseguia renegociar ao adicionar uma
   // nova trilha (como a tela compartilhada) — por isso só um lado enxergava a tela.
+  // Adiciona minhas trilhas (mic + tela, se houver) numa conexão — usada tanto
+  // na criação (por quem inicia) quanto depois de processar a primeira oferta
+  // (por quem recebe). Sem mic, ainda cria um transceiver "recvonly" pra
+  // garantir que a negociação aconteça e a pessoa consiga OUVIR os outros
+  // mesmo sem microfone.
+  function adicionarMinhasTrilhas(pc, estado) {
+    if (estado.tracksAdicionadas) return;
+    estado.tracksAdicionadas = true;
+    if (streamMic) streamMic.getTracks().forEach(t => pc.addTrack(t, streamMic));
+    else pc.addTransceiver('audio', { direction: 'recvonly' });
+    if (streamTela) streamTela.getTracks().forEach(t => pc.addTrack(t, streamTela));
+  }
+
   function criarConexao(idRemoto, nomeRemoto, souIniciador) {
     const pc = new RTCPeerConnection(configIce);
-    const estado = { pc, polite: !souIniciador, makingOffer: false, ignoreOffer: false };
+    const estado = { pc, polite: !souIniciador, makingOffer: false, ignoreOffer: false, tracksAdicionadas: false };
     conexoes[idRemoto] = estado;
     nomesRemotos[idRemoto] = nomeRemoto;
 
-    if (streamMic) streamMic.getTracks().forEach(t => pc.addTrack(t, streamMic));
-    if (streamTela) streamTela.getTracks().forEach(t => pc.addTrack(t, streamTela));
+    // Só quem INICIA a conexão adiciona as trilhas (e portanto oferta)
+    // imediatamente. Quem recebe (polite) espera a oferta chegar — isso
+    // evita que os dois lados ofertem ao mesmo tempo na primeira negociação,
+    // que era a causa raiz do áudio só "destravar" depois de compartilhar tela.
+    if (souIniciador) adicionarMinhasTrilhas(pc, estado);
 
     pc.onicecandidate = (evento) => {
       if (evento.candidate) {
@@ -1247,6 +1263,12 @@
       } else {
         await pc.setRemoteDescription(new RTCSessionDescription(sinal.sdp));
       }
+
+      // Primeira vez que esta conexão recebe uma oferta: agora sim adiciono
+      // minhas próprias trilhas (o navegador reaproveita o transceiver criado
+      // pela oferta recebida, virando uma negociação única e sem colisão).
+      adicionarMinhasTrilhas(pc, estado);
+
       const resposta = await pc.createAnswer();
       await pc.setLocalDescription(resposta);
       socket.emit('sinal', { para: de, sinal: { tipo: 'resposta', sdp: pc.localDescription } });
