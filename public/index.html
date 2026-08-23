@@ -468,7 +468,7 @@
     top: 6px; right: 6px;
     display: flex;
     gap: 5px;
-    opacity: 0;
+    opacity: 0.55; /* sempre um pouco visível — ficava invisível até passar o mouse */
     transition: opacity 0.15s;
   }
   .quadro-video:hover .controles-quadro { opacity: 1; }
@@ -748,8 +748,22 @@
   function pararAudioRemoto(id) {
     const n = nosAudioRemoto[id];
     if (!n) return;
-    try { n.fonte.disconnect(); n.ganho.disconnect(); n.analisador.disconnect(); } catch (e) {}
+    try { n.fonte.disconnect(); if (n.ganho) n.ganho.disconnect(); n.analisador.disconnect(); } catch (e) {}
     delete nosAudioRemoto[id];
+  }
+
+  // Analisa (sem tocar de volta) o SEU PRÓPRIO microfone, só pra acender o
+  // anel de "falando" na sua própria pill — antes só quem ouvia a voz de
+  // alguém via WebRTC tinha esse anel, então você nunca via o seu próprio.
+  function configurarAnaliseLocal(trilhaAudio) {
+    garantirAudioContext();
+    pararAudioRemoto('local');
+    const streamAudio = new MediaStream([trilhaAudio]);
+    const fonte = audioCtx.createMediaStreamSource(streamAudio);
+    const analisador = audioCtx.createAnalyser();
+    analisador.fftSize = 512;
+    fonte.connect(analisador); // não conecta no masterGain/destino — não toca de volta pra você
+    nosAudioRemoto['local'] = { fonte, ganho: null, analisador, dataArray: new Uint8Array(analisador.frequencyBinCount) };
   }
 
   function definirVolumeIndividual(id, valor) {
@@ -896,6 +910,7 @@
 
       if (streamMic) streamMic.getTracks().forEach(t => t.stop());
       streamMic = novoStream;
+      configurarAnaliseLocal(novaTrilha);
       atualizarUiChamada();
     } catch (e) {
       console.warn('não foi possível trocar de microfone', e);
@@ -1027,12 +1042,10 @@
 
       const btnTelaCheia = document.createElement('button');
       btnTelaCheia.className = 'botao-quadro';
-      btnTelaCheia.title = 'tela cheia';
+      btnTelaCheia.title = 'tela cheia (ou dê 2 cliques na tela)';
       btnTelaCheia.textContent = '⛶';
-      btnTelaCheia.addEventListener('click', () => {
-        if (video.requestFullscreen) video.requestFullscreen();
-        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-      });
+      btnTelaCheia.addEventListener('click', () => alternarTelaCheia(quadro, video));
+      video.addEventListener('dblclick', () => alternarTelaCheia(quadro, video));
 
       const btnOcultar = document.createElement('button');
       btnOcultar.className = 'botao-quadro botao-ocultar';
@@ -1084,6 +1097,32 @@
     if (quadro) quadro.remove();
   }
 
+  // Tela cheia com fallback: se o navegador recusar tela cheia no <video>
+  // sozinho (acontece em alguns builds do Electron), tenta no quadro inteiro
+  // em vez de falhar silenciosamente sem nenhum aviso.
+  function alternarTelaCheia(quadro, video) {
+    if (document.fullscreenElement === video || document.fullscreenElement === quadro) {
+      const sair = document.exitFullscreen || document.webkitExitFullscreen;
+      if (sair) sair.call(document);
+      return;
+    }
+    const pedir = video.requestFullscreen
+      ? video.requestFullscreen.bind(video)
+      : video.webkitRequestFullscreen
+        ? video.webkitRequestFullscreen.bind(video)
+        : null;
+    if (!pedir) { console.warn('tela cheia não suportada neste navegador'); return; }
+
+    Promise.resolve(pedir()).catch(() => {
+      const pedirQuadro = quadro.requestFullscreen
+        ? quadro.requestFullscreen.bind(quadro)
+        : quadro.webkitRequestFullscreen
+          ? quadro.webkitRequestFullscreen.bind(quadro)
+          : null;
+      if (pedirQuadro) Promise.resolve(pedirQuadro()).catch(e => console.warn('tela cheia recusada', e));
+    });
+  }
+
   // ---------- WebRTC: negociação perfeita (funciona nos dois sentidos) ----------
   // Sem isso, só quem "iniciou" a conexão conseguia renegociar ao adicionar uma
   // nova trilha (como a tela compartilhada) — por isso só um lado enxergava a tela.
@@ -1128,8 +1167,12 @@
     pc.onnegotiationneeded = async () => {
       try {
         estado.makingOffer = true;
-        const oferta = await pc.createOffer();
-        await pc.setLocalDescription(oferta);
+        // setLocalDescription() sem argumentos (em vez de createOffer + setLocalDescription
+        // em duas etapas) monta a oferta certa pro estado ATUAL da conexão no momento em que
+        // ela realmente é aplicada — evita a corrida em que um "rollback" (disparado por uma
+        // colisão de oferta) chega no meio das duas etapas e deixa a oferta desatualizada,
+        // quebrando a negociação de áudio silenciosamente.
+        await pc.setLocalDescription();
         socket.emit('sinal', { para: idRemoto, sinal: { tipo: 'oferta', sdp: pc.localDescription } });
       } catch (e) {
         console.error(e);
@@ -1276,6 +1319,8 @@
       streamMic = null;
     }
 
+    if (streamMic) configurarAnaliseLocal(streamMic.getAudioTracks()[0]);
+
     emChamada = true;
     adicionarParticipanteNaVoz('local', meuNome, true);
     socket.emit('entrar-voz', { sala: minhaSala });
@@ -1294,6 +1339,7 @@
     }
 
     emChamada = false;
+    pararAudioRemoto('local');
     removerParticipanteDaVoz('local');
     socket.emit('sair-voz', { sala: minhaSala });
     atualizarUiChamada();
