@@ -734,6 +734,23 @@
     garantirAudioContext();
     pararAudioRemoto(id);
     const streamAudio = new MediaStream([trilhaAudio]);
+
+    // Em alguns navegadores/Electron, uma trilha de áudio WebRTC só é
+    // decodificada de forma confiável quando também está "tocando" em algum
+    // elemento HTML — usar só o Web Audio API (createMediaStreamSource) sem
+    // nenhum elemento pode deixar a trilha muda. É exatamente por isso que só
+    // funcionava quando a pessoa compartilhava tela: o <video> criado pra
+    // tela carregava a trilha de áudio dela "de carona" e destravava o som.
+    // Esse <audio> escondido e mudo mantém o decodificador sempre ativo —
+    // quem toca o som de verdade continua sendo o grafo abaixo.
+    const elementoAudio = new Audio();
+    elementoAudio.srcObject = streamAudio;
+    elementoAudio.muted = true;
+    elementoAudio.autoplay = true;
+    elementoAudio.style.display = 'none';
+    document.body.appendChild(elementoAudio);
+    elementoAudio.play().catch(() => {});
+
     const fonte = audioCtx.createMediaStreamSource(streamAudio);
     const ganho = audioCtx.createGain();
     ganho.gain.value = volumesIndividuais[id] ?? 1;
@@ -742,13 +759,18 @@
     fonte.connect(ganho);
     ganho.connect(masterGain);
     ganho.connect(analisador);
-    nosAudioRemoto[id] = { fonte, ganho, analisador, dataArray: new Uint8Array(analisador.frequencyBinCount) };
+    nosAudioRemoto[id] = { fonte, ganho, analisador, dataArray: new Uint8Array(analisador.frequencyBinCount), elementoAudio };
   }
 
   function pararAudioRemoto(id) {
     const n = nosAudioRemoto[id];
     if (!n) return;
-    try { n.fonte.disconnect(); if (n.ganho) n.ganho.disconnect(); n.analisador.disconnect(); } catch (e) {}
+    try {
+      n.fonte.disconnect();
+      if (n.ganho) n.ganho.disconnect();
+      n.analisador.disconnect();
+      if (n.elementoAudio) { n.elementoAudio.pause(); n.elementoAudio.srcObject = null; n.elementoAudio.remove(); }
+    } catch (e) {}
     delete nosAudioRemoto[id];
   }
 

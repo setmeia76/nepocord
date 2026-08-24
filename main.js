@@ -32,11 +32,21 @@ function criarJanela() {
 }
 
 app.whenReady().then(() => {
-  // Concede automaticamente microfone/tela dentro do próprio app (é local e
-  // controlado por você, não precisa ficar perguntando toda vez).
+  // Concede automaticamente microfone/tela/tela-cheia dentro do próprio app
+  // (é local e controlado por você, não precisa ficar perguntando toda vez).
+  // "fullscreen" precisa estar nessa lista, senão o Electron NEGA silenciosamente
+  // todo pedido de tela cheia feito pela página (por isso o botão ⛶ não funcionava).
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    const permitidas = ['media', 'display-capture', 'mediaKeySystem'];
+    const permitidas = ['media', 'display-capture', 'mediaKeySystem', 'fullscreen'];
     callback(permitidas.includes(permission));
+  });
+
+  // Checagem síncrona de permissão (usada por algumas APIs, como
+  // document.fullscreenEnabled) — sem isso, só o handler assíncrono acima
+  // não é suficiente em todos os casos.
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    const permitidas = ['media', 'display-capture', 'mediaKeySystem', 'fullscreen'];
+    return permitidas.includes(permission);
   });
 
   // O Electron não expõe getDisplayMedia como um navegador comum — aqui
