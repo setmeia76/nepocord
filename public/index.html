@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>👀 nepocord — chat, voz e tela</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%80%3C/text%3E%3C/svg%3E">
 <style>
@@ -34,6 +34,7 @@
   /* ---------- Tela de entrada ---------- */
   #tela-entrada {
     height: 100vh;
+    height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -109,7 +110,7 @@
   #erro-entrada { color: var(--danger); font-size: 12px; margin-top: 10px; min-height: 14px; }
 
   /* ---------- App principal ---------- */
-  #app { display: none; height: 100vh; flex-direction: column; }
+  #app { display: none; height: 100vh; height: 100dvh; flex-direction: column; }
 
   #barra-topo {
     height: 48px;
@@ -168,6 +169,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  /* Em tela cheia, o quadro (não só o <video>) vira o elemento cheio — assim
+     nosso botão de sair (⛶, que mora no quadro) continua visível. Se a tela
+     cheia fosse só no <video>, o botão ficaria fora e sumiria, sem jeito
+     óbvio de sair (só Esc, que ninguém sabe usar por padrão). */
+  .quadro-video:fullscreen {
+    border-radius: 0;
+    border: none;
+    background: #000;
+  }
+  .quadro-video:fullscreen .controles-quadro {
+    opacity: 1;
+    top: 16px;
+    right: 16px;
+  }
+  .quadro-video:fullscreen .botao-quadro {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
   }
   .quadro-video video {
     width: 100%; height: 100%;
@@ -501,6 +521,74 @@
     cursor: pointer;
   }
   .quadro-video.tela-oculta-local .aviso-oculta { display: flex; }
+
+  /* ---------- Botão de alternar chat: só existe no celular ---------- */
+  #btn-chat-mobile { display: none; }
+
+  /* ---------- Responsivo (celular/tablet estreito) ---------- */
+  @media (max-width: 720px) {
+    .cartao-entrada {
+      width: min(340px, calc(100vw - 32px));
+      padding: 24px 20px;
+    }
+
+    #barra-topo {
+      padding: 0 10px;
+      padding-top: env(safe-area-inset-top, 0px);
+      height: calc(48px + env(safe-area-inset-top, 0px));
+    }
+    #barra-topo .info-sala { gap: 6px; font-size: 12px; }
+    #contagem { display: none; } /* sobra pouco espaço — a contagem cabe melhor só no desktop */
+    .area-direita-topo { gap: 8px; }
+
+    #btn-chat-mobile { display: flex; }
+
+    /* Empilha vídeo em cima do chat, em vez de lado a lado */
+    #corpo { flex-direction: column; }
+    #painel-video {
+      padding: 8px;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+    #painel-chat {
+      width: 100%;
+      height: 42vh;
+      border-left: none;
+      border-top: 1px solid var(--line);
+    }
+    /* Botão 💬 esconde o chat pra usar a tela toda pra ver o vídeo/tela
+       compartilhada — importante numa tela pequena. */
+    #app.chat-fechado #painel-chat { display: none; }
+    #app.chat-fechado #painel-video { flex: 1; }
+
+    #painel-config {
+      left: 12px;
+      right: 12px;
+      width: auto;
+      top: calc(52px + env(safe-area-inset-top, 0px));
+      max-height: 75dvh;
+    }
+
+    #barra-participantes { padding: 8px 10px; }
+
+    #barra-controles {
+      gap: 8px;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      height: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+    .botao-controle { width: 44px; height: 44px; font-size: 17px; }
+
+    /* Botões de tela cheia/ocultar maiores — mais fáceis de tocar */
+    .quadro-video .controles-quadro { opacity: 0.75; }
+    .quadro-video .botao-quadro { width: 34px; height: 34px; font-size: 15px; }
+
+    /* Evita zoom automático do iOS ao focar campos de texto (exige >=16px) */
+    .campo input,
+    #input-chat,
+    .campo-config select { font-size: 16px; }
+
+    #menu-contexto-usuario { width: min(220px, calc(100vw - 24px)); }
+  }
 </style>
 </head>
 <body>
@@ -534,6 +622,7 @@
     </div>
     <div class="area-direita-topo">
       <div id="contagem">1 pessoa na sala</div>
+      <button class="botao-config" id="btn-chat-mobile" title="mostrar/esconder chat" aria-label="mostrar/esconder chat">💬</button>
       <button class="botao-config" id="btn-config" title="configurações" aria-label="configurações">⚙️</button>
     </div>
   </div>
@@ -672,8 +761,7 @@
   const btnRuido = document.getElementById('btn-ruido');
   const btnSair = document.getElementById('btn-sair');
 
-  const btnConfig = document.getElementById('btn-config');
-  const painelConfig = document.getElementById('painel-config');
+  const btnConfig = document.getElementById('btn-config');  const painelConfig = document.getElementById('painel-config');
   const chkRuido = document.getElementById('chk-ruido');
   const chkEco = document.getElementById('chk-eco');
   const chkAgc = document.getElementById('chk-agc');
@@ -816,6 +904,17 @@
     painelConfig.classList.toggle('aberto', abrindo);
     btnConfig.classList.toggle('aberto', abrindo);
     if (abrindo) popularDispositivos();
+  });
+
+  // ---------- Botão 💬 (só existe no celular): esconde o chat pra sobrar
+  // mais espaço de tela pro vídeo/tela compartilhada ----------
+  const btnChatMobile = document.getElementById('btn-chat-mobile');
+  btnChatMobile.addEventListener('click', () => {
+    const escondendo = !app.classList.contains('chat-fechado');
+    app.classList.toggle('chat-fechado', escondendo);
+    btnChatMobile.classList.toggle('ativo', !escondendo);
+    btnChatMobile.textContent = escondendo ? '🖥️' : '💬';
+    btnChatMobile.title = escondendo ? 'mostrar chat' : 'esconder chat';
   });
 
   document.addEventListener('click', (e) => {
@@ -1049,6 +1148,7 @@
       const video = document.createElement('video');
       video.autoplay = true;
       video.playsInline = true;
+      video.disablePictureInPicture = true;
       // O áudio de todo mundo é tocado pelo grafo de Web Audio
       // (configurarAudioRemoto), então o <video> fica sempre mudo — senão
       // o som tocaria duas vezes.
@@ -1119,29 +1219,31 @@
     if (quadro) quadro.remove();
   }
 
-  // Tela cheia com fallback: se o navegador recusar tela cheia no <video>
-  // sozinho (acontece em alguns builds do Electron), tenta no quadro inteiro
-  // em vez de falhar silenciosamente sem nenhum aviso.
+  // Tela cheia no QUADRO inteiro (não só no <video>) — assim nosso botão de
+  // sair, que mora no quadro, continua visível e clicável dentro da tela
+  // cheia. Se fosse só no <video>, o botão ficaria fora e desaparecia.
   function alternarTelaCheia(quadro, video) {
-    if (document.fullscreenElement === video || document.fullscreenElement === quadro) {
+    if (document.fullscreenElement === quadro || document.fullscreenElement === video) {
       const sair = document.exitFullscreen || document.webkitExitFullscreen;
       if (sair) sair.call(document);
       return;
     }
-    const pedir = video.requestFullscreen
-      ? video.requestFullscreen.bind(video)
-      : video.webkitRequestFullscreen
-        ? video.webkitRequestFullscreen.bind(video)
+    const pedir = quadro.requestFullscreen
+      ? quadro.requestFullscreen.bind(quadro)
+      : quadro.webkitRequestFullscreen
+        ? quadro.webkitRequestFullscreen.bind(quadro)
         : null;
     if (!pedir) { console.warn('tela cheia não suportada neste navegador'); return; }
 
     Promise.resolve(pedir()).catch(() => {
-      const pedirQuadro = quadro.requestFullscreen
-        ? quadro.requestFullscreen.bind(quadro)
-        : quadro.webkitRequestFullscreen
-          ? quadro.webkitRequestFullscreen.bind(quadro)
+      // fallback: se o navegador recusar tela cheia no quadro, tenta direto
+      // no <video> (perde o botão de sair, mas ao menos mostra a tela).
+      const pedirVideo = video.requestFullscreen
+        ? video.requestFullscreen.bind(video)
+        : video.webkitRequestFullscreen
+          ? video.webkitRequestFullscreen.bind(video)
           : null;
-      if (pedirQuadro) Promise.resolve(pedirQuadro()).catch(e => console.warn('tela cheia recusada', e));
+      if (pedirVideo) Promise.resolve(pedirVideo()).catch(e => console.warn('tela cheia recusada', e));
     });
   }
 
@@ -1436,7 +1538,20 @@
     if (streamTela) { pararCompartilhamentoTela(); return; }
 
     try {
-      streamTela = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      // Resolução/fps sem limite deixam o navegador escolher valores muito
+      // pesados pro codificador de vídeo (às vezes a resolução nativa da tela
+      // em altíssima taxa de quadros) — isso sobrecarrega o pipeline de vídeo
+      // e é a causa mais comum de precisar desabilitar a aceleração de
+      // hardware pra parar de travar/corromper a imagem. Limitando aqui, o
+      // encoder trabalha bem com aceleração de hardware ligada.
+      streamTela = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          frameRate: { ideal: 30, max: 30 },
+          width: { max: 1920 },
+          height: { max: 1080 }
+        },
+        audio: false
+      });
     } catch (e) {
       return; // usuário cancelou o seletor de tela
     }
