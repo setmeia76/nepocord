@@ -283,6 +283,7 @@
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     font-size: 18px;
+    position: relative;
     transition: background 0.15s, border-color 0.15s, opacity 0.15s;
   }
   .botao-controle:hover { border-color: var(--text-dim); }
@@ -294,6 +295,19 @@
   .botao-controle.indisponivel {
     opacity: 0.35;
     pointer-events: none;
+  }
+  /* Diferente de "indisponivel" (que é temporário, some ao entrar na
+     chamada): "sem-suporte" fica visível pra sempre num navegador que
+     genuinamente não tem o recurso (ex: celular), com uma risca — assim a
+     pessoa entende de cara que não é falta de permissão, é a plataforma. */
+  .botao-controle.sem-suporte { opacity: 0.5; }
+  .botao-controle.sem-suporte::after {
+    content: '';
+    position: absolute;
+    width: 34px; height: 2px;
+    background: var(--danger);
+    transform: rotate(-45deg);
+    border-radius: 2px;
   }
   .botao-controle.chamada { background: var(--pink); color: #21001b; border-color: var(--pink); }
   .botao-controle.chamada:hover { filter: brightness(1.08); }
@@ -1192,6 +1206,12 @@
     const video = quadro.querySelector('video');
     if (!quadro.classList.contains('tela-oculta-local') && video.srcObject !== stream) {
       video.srcObject = stream;
+      // O atributo autoplay sozinho não é confiável em navegadores mobile
+      // (principalmente Firefox/Chrome Android) pra um <video> criado
+      // dinamicamente — sem chamar .play() explicitamente, o quadro fica
+      // preto mesmo com o stream chegando certinho. .catch() silencioso
+      // porque o vídeo já está mudo (autoplay mudo é sempre permitido).
+      video.play().catch(() => {});
     }
     quadro.querySelector('.rotulo').textContent = nome + ' · tela';
   }
@@ -1210,6 +1230,7 @@
       if (botao) { botao.textContent = '🙉'; botao.title = 'desmutar tela'; }
     } else {
       video.srcObject = quadro._streamOriginal || null;
+      video.play().catch(() => {});
       if (botao) { botao.textContent = '🙈'; botao.title = 'mutar tela (ocultar localmente)'; }
     }
   }
@@ -1533,9 +1554,25 @@
   });
 
   // ---------- Compartilhar tela ----------
+  // Compartilhar tela é essencialmente um recurso só de desktop: Safari
+  // iOS não suporta de jeito nenhum, e Android (Chrome/Firefox) não expõe
+  // captura de tela pra páginas web comuns. Detectamos isso na hora de
+  // entrar na chamada, pra avisar com clareza em vez de deixar o botão
+  // simplesmente não fazer nada quando alguém tentar usá-lo no celular.
+  const compartilhamentoTelaSuportado = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+  if (!compartilhamentoTelaSuportado) {
+    btnTela.title = 'compartilhamento de tela não é suportado neste navegador (é um recurso só de computador)';
+    btnTela.classList.add('sem-suporte');
+  }
+
   btnTela.addEventListener('click', async () => {
     if (!emChamada) return;
     if (streamTela) { pararCompartilhamentoTela(); return; }
+
+    if (!compartilhamentoTelaSuportado) {
+      adicionarMensagemSistema('Compartilhar tela não é suportado neste navegador — é um recurso só de computador (não funciona em celular).');
+      return;
+    }
 
     try {
       // Resolução/fps sem limite deixam o navegador escolher valores muito

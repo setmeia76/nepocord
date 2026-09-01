@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: nepocord
+    runtime: node
+    plan: free
+    # --omit=dev pula "electron" e "electron-builder" (dependências só do
+    # app desktop, pesadíssimas) — o Render só precisa do express e do
+    # socket.io pra rodar o server.js. Deploy fica bem mais rápido.
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20
