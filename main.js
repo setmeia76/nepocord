@@ -3,7 +3,7 @@ const path = require('path');
 
 // Aponta direto para o app hospedado no Render — sem servidor local,
 // sem ngrok, funciona de qualquer rede e abre bem mais rápido.
-const URL_PRODUCAO = 'https://discord2-tmuf.onrender.com/';
+const URL_PRODUCAO = 'https://nepocord.onrender.com/';
 const URL_APP = process.env.ELECTRON_APP_URL || URL_PRODUCAO;
 
 let janelaPrincipal = null;

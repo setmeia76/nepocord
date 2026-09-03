@@ -13,6 +13,34 @@ const io = new Server(server, {
 // quanto dentro do app empacotado (.exe), onde a pasta atual é diferente.
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Fornece as credenciais de um servidor TURN pro cliente. Sem isso, o app
+// só tem STUN — que funciona bem na maioria das redes, mas falha em redes
+// mais restritas (ex: Wi-Fi de escola/empresa com "isolamento de cliente",
+// que bloqueia dispositivos de se conectarem direto entre si mesmo na
+// mesma rede). O TURN retransmite o tráfego nesses casos.
+//
+// A chave vem de uma variável de ambiente (METERED_API_KEY) pra não expor
+// nada sensível no código-fonte público. Sem a chave configurada, cai de
+// volta pro STUN-only (comportamento atual, nada quebra).
+app.get('/turn-credentials', async (req, res) => {
+  const apiKey = process.env.METERED_API_KEY;
+  const appName = process.env.METERED_APP_NAME;
+  if (!apiKey || !appName) {
+    return res.json({ configurado: false, iceServers: [] });
+  }
+  try {
+    const resposta = await fetch(
+      `https://${appName}.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`
+    );
+    if (!resposta.ok) throw new Error('Metered respondeu ' + resposta.status);
+    const iceServers = await resposta.json();
+    res.json({ configurado: true, iceServers });
+  } catch (e) {
+    console.error('Falha ao buscar credenciais TURN:', e.message);
+    res.json({ configurado: false, iceServers: [] });
+  }
+});
+
 // socketId -> nome (válido durante toda a conexão)
 const nomesPorSocket = {};
 

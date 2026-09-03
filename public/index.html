@@ -725,6 +725,7 @@
 <script>
 (() => {
   const socket = io();
+  carregarCredenciaisTurn(); // busca em paralelo, sem atrasar o resto do carregamento
 
   // ---------- Estado ----------
   let meuNome = '';
@@ -749,12 +750,30 @@
   let dispositivoMicPreferido = null;
   let dispositivoSaidaPreferido = null;
 
+  // Começa só com STUN (funciona na maioria das redes). Se o servidor tiver
+  // um TURN configurado, essas credenciais são carregadas por cima antes de
+  // entrar na chamada — TURN é o que salva a conexão em redes mais
+  // restritas (ex: Wi-Fi de escola/empresa com isolamento de cliente).
   const configIce = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' }
     ]
   };
+
+  async function carregarCredenciaisTurn() {
+    try {
+      const resposta = await fetch('/turn-credentials');
+      const dados = await resposta.json();
+      if (dados.configurado && Array.isArray(dados.iceServers) && dados.iceServers.length) {
+        configIce.iceServers = [...configIce.iceServers, ...dados.iceServers];
+        console.log('TURN carregado — conexão deve funcionar mesmo em redes mais restritas.');
+      }
+    } catch (e) {
+      // Sem TURN configurado ou servidor indisponível — segue só com STUN,
+      // que já é o comportamento de antes.
+    }
+  }
 
   // ---------- Elementos ----------
   const telaEntrada = document.getElementById('tela-entrada');
