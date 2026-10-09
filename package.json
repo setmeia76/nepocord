@@ -5,22 +5,27 @@
   "main": "main.js",
   "scripts": {
     "start": "node server.js",
+    "dev": "concurrently \"nodemon server.js\" \"cross-env ELECTRON_APP_URL=http://localhost:3000 electron .\"",
     "app": "electron .",
     "dist": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux"
   },
   "dependencies": {
+    "compression": "^1.8.2",
     "express": "^4.19.2",
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
     "electron": "^31.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "nodemon": "^3.1.14"
   },
   "build": {
-    "appId": "com.seunome.nepocord",
-    "productName": "nepocord",
+    "appId": "app.nepocord.desktop",
+    "productName": "Nepocord",
     "files": [
       "main.js",
       "build/icone.png",
