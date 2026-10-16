@@ -1,0 +1,55 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Nepocord: App Desktop (Electron - Local)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/electron/dist/electron.exe"
+      },
+      "args": [
+        "."
+      ],
+      "env": {
+        "ELECTRON_APP_URL": "http://localhost:3000"
+      },
+      "outputCapture": "std"
+    },
+    {
+      "name": "Nepocord: App Desktop (Electron - Nuvem Render)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/electron/dist/electron.exe"
+      },
+      "args": [
+        "."
+      ],
+      "outputCapture": "std"
+    },
+    {
+      "name": "Nepocord: Servidor Local (server.js)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/server.js",
+      "restart": true,
+      "outputCapture": "std"
+    }
+  ],
+  "compounds": [
+    {
+      "name": " Nepocord",
+      "configurations": [
+        "Nepocord: Servidor Local (server.js)",
+        "Nepocord: App Desktop (Electron - Local)"
+      ],
+      "stopAll": true
+    }
+  ]
+}

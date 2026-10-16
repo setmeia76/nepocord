@@ -47,19 +47,19 @@ app.get('/turn-credentials', async (req, res) => {
 });
 
 // socketId -> nome (válido durante toda a conexão)
-const nomesPorSocket = new Map();
+const nomesPorSocket = {};
 
 // [FIX] Rate-limiting simples por socket — evita spam de mensagens
 const LIMITE_MENSAGENS_POR_SEGUNDO = 5;
 const MAX_TAMANHO_MENSAGEM = 2000; // caracteres
-const contadoresMensagens = new Map(); // socketId -> { count, resetAt }
+const contadoresMensagens = {}; // socketId -> { count, resetAt }
 
 function podeEnviarMensagem(socketId) {
   const agora = Date.now();
-  let info = contadoresMensagens.get(socketId);
+  let info = contadoresMensagens[socketId];
   if (!info || agora > info.resetAt) {
     info = { count: 0, resetAt: agora + 1000 };
-    contadoresMensagens.set(socketId, info);
+    contadoresMensagens[socketId] = info;
   }
   if (info.count >= LIMITE_MENSAGENS_POR_SEGUNDO) return false;
   info.count++;
@@ -71,33 +71,22 @@ function membrosDaSala(sala, excluirId) {
   if (!set) return [];
   return [...set]
     .filter((id) => id !== excluirId)
-    .map((id) => ({ id, nome: nomesPorSocket.get(id) || 'convidado' }));
+    .map((id) => ({ id, nome: nomesPorSocket[id] || 'convidado' }));
 }
 
 io.on('connection', (socket) => {
   let salaAtual = null;
-  let salaVozAtual = null;
 
   // Entrar na sala = só chat e presença. NÃO conecta voz/câmera/tela automaticamente.
-  socket.on('entrar-sala', (dados = {}) => {
-    let { sala, nome } = dados;
+  socket.on('entrar-sala', ({ sala, nome }) => {
     // [FIX] Validação básica dos inputs
     if (typeof sala !== 'string' || typeof nome !== 'string') return;
     sala = sala.trim().substring(0, 24);
     nome = nome.trim().substring(0, 20);
     if (!sala || !nome) return;
 
-    if (salaAtual && salaAtual !== sala) {
-      socket.leave(salaAtual);
-      socket.to(salaAtual).emit('usuario-saiu', { id: socket.id, nome: nomesPorSocket.get(socket.id) });
-      if (salaVozAtual) {
-        socket.to(salaVozAtual).emit('usuario-saiu-voz', { id: socket.id });
-        socket.leave(salaVozAtual);
-        salaVozAtual = null;
-      }
-    }
     salaAtual = sala;
-    nomesPorSocket.set(socket.id, nome);
+    nomesPorSocket[socket.id] = nome;
     socket.join(sala);
 
     socket.emit('usuarios-na-sala', membrosDaSala(sala, socket.id));
@@ -105,56 +94,43 @@ io.on('connection', (socket) => {
   });
 
   // Chat de texto (sempre ativo, independente da chamada)
-  socket.on('mensagem-chat', (dados = {}) => {
-    let { texto } = dados;
+  socket.on('mensagem-chat', ({ sala, nome, texto }) => {
     // [FIX] Validação de tamanho e rate-limiting
     if (typeof texto !== 'string') return;
     texto = texto.trim();
     if (!texto || texto.length > MAX_TAMANHO_MENSAGEM) return;
     if (!podeEnviarMensagem(socket.id)) return; // rate-limited
 
-    if (!salaAtual || !socket.rooms.has(salaAtual)) return;
-    io.to(salaAtual).emit('mensagem-chat', { nome: nomesPorSocket.get(socket.id) || 'convidado', texto, hora: Date.now() });
+    io.to(sala).emit('mensagem-chat', { nome, texto, hora: Date.now() });
   });
 
   // ---- Canal de voz/tela: opt-in, o usuário precisa clicar para entrar ----
-  socket.on('entrar-voz', (dados = {}) => {
-    if (!salaAtual || !socket.rooms.has(salaAtual)) return;
-    const salaVoz = salaAtual + ':voz';
-    if (salaVozAtual === salaVoz) return;
-    if (salaVozAtual) socket.leave(salaVozAtual);
-    salaVozAtual = salaVoz;
+  socket.on('entrar-voz', ({ sala }) => {
+    const salaVoz = sala + ':voz';
     const outros = membrosDaSala(salaVoz, socket.id);
     socket.join(salaVoz);
     socket.emit('usuarios-na-voz', outros);
-    socket.to(salaVoz).emit('novo-usuario-voz', { id: socket.id, nome: nomesPorSocket.get(socket.id) });
+    socket.to(salaVoz).emit('novo-usuario-voz', { id: socket.id, nome: nomesPorSocket[socket.id] });
   });
 
-  socket.on('sair-voz', () => {
-    if (!salaVozAtual) return;
-    const salaVoz = salaVozAtual;
+  socket.on('sair-voz', ({ sala }) => {
+    const salaVoz = sala + ':voz';
     socket.to(salaVoz).emit('usuario-saiu-voz', { id: socket.id });
     socket.leave(salaVoz);
-    salaVozAtual = null;
   });
 
   // Sinalização WebRTC (repassa para o destinatário específico)
-  socket.on('sinal', (dados = {}) => {
-    const { para, sinal } = dados;
-    if (typeof para !== 'string' || !sinal || typeof sinal !== 'object') return;
-    if (!salaVozAtual || !socket.rooms.has(salaVozAtual)) return;
-    const destinatario = io.sockets.sockets.get(para);
-    if (!destinatario || !destinatario.rooms.has(salaVozAtual)) return;
+  socket.on('sinal', ({ para, sinal }) => {
     io.to(para).emit('sinal', { de: socket.id, sinal });
   });
 
   socket.on('disconnect', () => {
     if (salaAtual) {
-      socket.to(salaAtual).emit('usuario-saiu', { id: socket.id, nome: nomesPorSocket.get(socket.id) });
-      if (salaVozAtual) socket.to(salaVozAtual).emit('usuario-saiu-voz', { id: socket.id });
+      socket.to(salaAtual).emit('usuario-saiu', { id: socket.id, nome: nomesPorSocket[socket.id] });
+      socket.to(salaAtual + ':voz').emit('usuario-saiu-voz', { id: socket.id });
     }
-    nomesPorSocket.delete(socket.id);
-    contadoresMensagens.delete(socket.id);
+    delete nomesPorSocket[socket.id];
+    delete contadoresMensagens[socket.id];
   });
 });
 

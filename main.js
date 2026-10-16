@@ -1,4 +1,13 @@
-const { app, BrowserWindow, Menu, session, desktopCapturer } = require('electron');
+const electron = require('electron');
+
+// Proteção caso alguém tente rodar "node main.js" diretamente
+if (typeof electron === 'string' || !electron.app) {
+  console.error('\n❌ [ERRO] O Electron não pode ser iniciado diretamente com "node main.js".');
+  console.error('👉 Use "npm run dev", "npm run app" ou inicie pelo menu "Run and Debug" (F5) do VS Code/IDE.\n');
+  process.exit(1);
+}
+
+const { app, BrowserWindow, Menu, session, desktopCapturer } = electron;
 const path = require('path');
 
 // Aponta direto para o app hospedado no Render — sem servidor local,
@@ -24,7 +33,31 @@ function criarJanela() {
   });
 
   Menu.setApplicationMenu(null);
+
+  // Em modo de desenvolvimento, permite abrir o DevTools com F12 ou Ctrl+Shift+I
+  if (!app.isPackaged) {
+    janelaPrincipal.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+        janelaPrincipal.webContents.toggleDevTools();
+        event.preventDefault();
+      }
+    });
+  }
+
   janelaPrincipal.loadURL(URL_APP);
+
+  janelaPrincipal.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.warn(`[Aviso] Falha ao carregar ${validatedURL}: ${errorDescription} (${errorCode})`);
+    // Se for localhost (ex: servidor ainda iniciando), tenta reconectar
+    if (validatedURL.includes('localhost') || validatedURL.includes('127.0.0.1')) {
+      console.log('Tentando reconectar ao servidor local em 2 segundos...');
+      setTimeout(() => {
+        if (janelaPrincipal && !janelaPrincipal.isDestroyed()) {
+          janelaPrincipal.loadURL(validatedURL);
+        }
+      }, 2000);
+    }
+  });
 
   janelaPrincipal.on('closed', () => {
     janelaPrincipal = null;

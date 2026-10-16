@@ -28,6 +28,7 @@
 
   // [FIX] Detecção de fala agora é controlada — só roda durante a chamada, a ~15fps
   let intervalFala = null;
+  let estado_qualidadeInterval = null;
 
   // Começa só com STUN (funciona na maioria das redes). Se o servidor tiver
   // um TURN configurado, essas credenciais são carregadas por cima antes de
@@ -39,6 +40,43 @@
       { urls: 'stun:stun1.l.google.com:19302' }
     ]
   };
+
+  // [QUALIDADE] Mapa de bitrate por preset — impede que o WebRTC abaixe a
+  // qualidade sozinho (congestion control). O valor é o teto que o encoder
+  // pode usar; na prática ele se estabiliza perto disso.
+  const BITRATE_POR_QUALIDADE = {
+    '1080@60': 6_000_000,   // 6 Mbps — 1080p suave/jogos
+    '1080@30': 4_000_000,   // 4 Mbps — 1080p padrão
+    '720@30':  2_500_000,   // 2.5 Mbps — 720p balanço
+    '720@24':  2_000_000,   // 2 Mbps — 720p filme
+    '480@15':    800_000    // 800 kbps — economia de rede
+  };
+
+  // [QUALIDADE] Aplica o bitrate máximo no sender de vídeo de cada peer.
+  // Isso TRAVA a qualidade: o encoder não vai mais oscilar/cair.
+  async function travarQualidadeVideo(pc) {
+    const qualidade = selectQualidadeVideo.value;
+    const maxBitrate = BITRATE_POR_QUALIDADE[qualidade] || 4_000_000;
+    const fps = parseInt(qualidade.split('@')[1], 10) || 30;
+
+    for (const sender of pc.getSenders()) {
+      if (!sender.track || sender.track.kind !== 'video') continue;
+      try {
+        const params = sender.getParameters();
+        // Garante que existe pelo menos uma encoding
+        if (!params.encodings || params.encodings.length === 0) {
+          params.encodings = [{}];
+        }
+        params.encodings[0].maxBitrate = maxBitrate;
+        params.encodings[0].maxFramerate = fps;
+        // Prioriza manter resolução — se a rede apertar, baixa o FPS primeiro
+        params.degradationPreference = 'maintain-resolution';
+        await sender.setParameters(params);
+      } catch (e) {
+        console.warn('[Qualidade] não foi possível travar bitrate do sender:', e);
+      }
+    }
+  }
 
   async function carregarCredenciaisTurn() {
     try {
@@ -267,6 +305,29 @@
       
       try { await streamMic.getAudioTracks()[0].applyConstraints(constraintsAudio); }
       catch (e) { console.warn('não foi possível alternar qualidade de áudio', e); }
+    }
+  });
+
+  selectQualidadeVideo.addEventListener('change', async () => {
+    if (streamTela) {
+      const valVideo = selectQualidadeVideo.value;
+      const [res, fpsStr] = valVideo.split('@');
+      const height = res === '1080' ? 1080 : res === '720' ? 720 : 480;
+      const width = res === '1080' ? 1920 : res === '720' ? 1280 : 854;
+      const fps = parseInt(fpsStr, 10);
+      const track = streamTela.getVideoTracks()[0];
+      if (track && track.applyConstraints) {
+        try {
+          await track.applyConstraints({
+            width: { ideal: width, max: width },
+            height: { ideal: height, max: height },
+            frameRate: { ideal: fps, max: fps }
+          });
+        } catch (e) {
+          console.warn('[Qualidade] não foi possível aplicar novas constraints:', e);
+        }
+      }
+      Object.values(conexoes).forEach(e => travarQualidadeVideo(e.pc));
     }
   });
 
@@ -604,7 +665,11 @@
     estado.tracksAdicionadas = true;
     if (streamMic) streamMic.getTracks().forEach(t => pc.addTrack(t, streamMic));
     else pc.addTransceiver('audio', { direction: 'recvonly' });
-    if (streamTela) streamTela.getTracks().forEach(t => pc.addTrack(t, streamTela));
+    if (streamTela) {
+      streamTela.getTracks().forEach(t => pc.addTrack(t, streamTela));
+      // [QUALIDADE] Trava o bitrate quando um novo peer se conecta e já existe tela sendo compartilhada
+      setTimeout(() => travarQualidadeVideo(pc), 500);
+    }
   }
 
   function criarConexao(idRemoto, nomeRemoto, souIniciador) {
@@ -822,6 +887,9 @@
     pararDeteccaoDeFala(); // [FIX] para o loop ao sair
     pararAudioRemoto('local');
     removerParticipanteDaVoz('local');
+    if (audioCtx && audioCtx.state === 'running') {
+      audioCtx.suspend().catch(() => {});
+    }
     socket.emit('sair-voz', { sala: minhaSala });
     atualizarUiChamada();
   }
@@ -904,13 +972,32 @@
     const trilhaTela = streamTela.getVideoTracks()[0];
     trilhaTela.onended = pararCompartilhamentoTela;
 
-    Object.values(conexoes).forEach(estado => estado.pc.addTrack(trilhaTela, streamTela));
+    // Aplica a trilha em todos os peers e TRAVA o bitrate na qualidade escolhida
+    for (const estado of Object.values(conexoes)) {
+      estado.pc.addTrack(trilhaTela, streamTela);
+      // Aguarda a negociação resolver antes de setar os parâmetros
+      // (sem o setTimeout o sender ainda não tem parâmetros disponíveis)
+      setTimeout(() => travarQualidadeVideo(estado.pc), 500);
+    }
 
     criarOuAtualizarQuadro('local', meuNome, streamTela);
     btnTela.classList.add('ativo');
+
+    // [QUALIDADE] Reforça a trava a cada 8 segundos enquanto tela estiver ativa.
+    // Isso impede que o WebRTC relaxe o bitrate depois de alguns minutos.
+    if (!estado_qualidadeInterval) {
+      estado_qualidadeInterval = setInterval(() => {
+        if (!streamTela) { clearInterval(estado_qualidadeInterval); estado_qualidadeInterval = null; return; }
+        Object.values(conexoes).forEach(e => travarQualidadeVideo(e.pc));
+      }, 8000);
+    }
   });
 
   function pararCompartilhamentoTela() {
+    if (estado_qualidadeInterval) {
+      clearInterval(estado_qualidadeInterval);
+      estado_qualidadeInterval = null;
+    }
     if (!streamTela) return;
     const trilha = streamTela.getVideoTracks()[0];
     Object.values(conexoes).forEach(estado => {

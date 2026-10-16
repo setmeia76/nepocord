@@ -1,0 +1,36 @@
+# Dependências
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Compilação / Pacotes do Electron (electron-builder)
+dist/
+dist-*/
+out/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.zip
+
+# Variáveis de ambiente e segredos locais
+.env
+.env.local
+.env.*.local
+
+# Logs e arquivos temporários do sistema
+logs/
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs (mantendo .vscode/launch.json que ajuda a rodar o projeto)
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
